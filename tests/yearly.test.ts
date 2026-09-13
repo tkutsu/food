@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { completeYears, yearAverages, yearToShow } from "@/lib/yearly";
+import {
+  completeYears,
+  yearAverages,
+  yearToShow,
+  yearsWithAverages,
+} from "@/lib/yearly";
 
 /** "2024-01" to "2026-08", the shape the catalogue's month list has. */
 function monthsFrom(first: [number, number], last: [number, number]): string[] {
@@ -89,5 +94,13 @@ describe("yearToShow", () => {
 
   it("has nothing to show for an empty series", () => {
     expect(yearToShow({}, MONTHS)).toBeNull();
+  });
+});
+
+describe("yearsWithAverages", () => {
+  it("steps only through complete years that hold a price", () => {
+    const series = { FR: filled([["2025-03", 4], ["2026-02", 5]]) };
+    // 2024 has no price, 2026 is still in progress.
+    expect(yearsWithAverages(series, MONTHS)).toEqual([2025]);
   });
 });

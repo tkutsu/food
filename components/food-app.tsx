@@ -17,7 +17,11 @@ import {
   incomeUnitFor,
 } from "@/lib/scale";
 import type { Series } from "@/lib/types";
-import { yearAverages, yearToShow } from "@/lib/yearly";
+import { yearAverages, yearToShow, yearsWithAverages } from "@/lib/yearly";
+
+/** Playback pace. A month flickers past; a year is held long enough to read. */
+const MONTH_STEP_MS = 90;
+const YEAR_STEP_MS = 650;
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -44,6 +48,9 @@ export function FoodApp() {
   const { sector, error: sectorError } = useSector(sectorId);
   const [wantedProduct, setWantedProduct] = useState<string | null>(null);
   const [wantedMonth, setWantedMonth] = useState<string | null>(null);
+  // Held as a year rather than an index, for the same reason as the month:
+  // switching sector keeps you on the year you were looking at.
+  const [wantedYear, setWantedYear] = useState<number | null>(null);
   const [organic, setOrganic] = useState(false);
   const [normalised, setNormalised] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -116,8 +123,19 @@ export function FoodApp() {
   const monthIndex = wantedIndex === -1 ? opensOn : wantedIndex;
   const month = months[monthIndex] ?? "";
 
-  /** The newest complete year with most of the product's countries in it. */
-  const year = useMemo(() => yearToShow(series, months), [months, series]);
+  /** The years the yearly timeline steps through, oldest first. */
+  const years = useMemo(
+    () => yearsWithAverages(series, months),
+    [months, series],
+  );
+  /** Where the yearly timeline opens: the newest year most countries filed. */
+  const opensOnYear = useMemo(
+    () => yearToShow(series, months),
+    [months, series],
+  );
+  const year =
+    wantedYear !== null && years.includes(wantedYear) ? wantedYear : opensOnYear;
+  const yearIndex = year === null ? 0 : Math.max(years.indexOf(year), 0);
   const showYear = yearly && year !== null;
 
   const averages = useMemo(
@@ -217,37 +235,64 @@ export function FoodApp() {
     [catalog, format, values],
   );
 
+  // The timeline steps through years when the yearly average is on and
+  // through months when it is off; everything below works on whichever.
+  const stepCount = showYear ? years.length : months.length;
+  const stepIndex = showYear ? yearIndex : monthIndex;
+
+  const goToStep = useCallback(
+    (index: number) => {
+      if (showYear) setWantedYear(years[index] ?? null);
+      else setWantedMonth(months[index] ?? null);
+    },
+    [months, showYear, years],
+  );
+
   // Playback walks the timeline without the timer depending on every render.
-  const indexRef = useRef(monthIndex);
+  const indexRef = useRef(stepIndex);
   useEffect(() => {
-    indexRef.current = monthIndex;
-  }, [monthIndex]);
+    indexRef.current = stepIndex;
+  }, [stepIndex]);
 
   useEffect(() => {
-    if (!playing || months.length === 0) return;
-    const timer = setInterval(() => {
-      const next = indexRef.current + 1;
-      if (next >= months.length) {
-        setPlaying(false);
-        return;
-      }
-      indexRef.current = next;
-      setWantedMonth(months[next]);
-    }, 90);
+    if (!playing || stepCount === 0) return;
+    const timer = setInterval(
+      () => {
+        const next = indexRef.current + 1;
+        if (next >= stepCount) {
+          setPlaying(false);
+          return;
+        }
+        indexRef.current = next;
+        goToStep(next);
+      },
+      showYear ? YEAR_STEP_MS : MONTH_STEP_MS,
+    );
     return () => clearInterval(timer);
-  }, [months, playing]);
+  }, [goToStep, playing, showYear, stepCount]);
 
   const togglePlay = () => {
     if (playing) {
       setPlaying(false);
       return;
     }
-    if (monthIndex >= months.length - 1) setWantedMonth(months[0]);
+    if (stepIndex >= stepCount - 1) goToStep(0);
     setPlaying(true);
   };
 
+  /**
+   * Switching granularity keeps your place, once you have moved off the
+   * default: a month in 2019 becomes the 2019 average, and the 2019 average
+   * becomes December 2019. Left on the defaults, each mode opens on its own
+   * newest well-covered step instead.
+   */
   const changeYearly = (value: boolean) => {
     setPlaying(false);
+    if (value && wantedMonth) {
+      setWantedYear(Number(wantedMonth.slice(0, 4)));
+    } else if (!value && wantedYear !== null && year !== null) {
+      setWantedMonth(`${year}-12`);
+    }
     setYearly(value);
   };
 
@@ -389,14 +434,17 @@ export function FoodApp() {
             }
             onChange={changeYearly}
             tall
-            title="Untick to step through the months"
+            title={
+              yearly
+                ? "The timeline steps through yearly averages; untick for months"
+                : "Tick to step through yearly averages instead of months"
+            }
           />
-          {/* Left in place but switched off while the yearly average is on,
-              so the tickbox beside it plainly says what unticking does. */}
           <button
-            aria-label={playing ? "Pause" : "Play the months"}
-            className="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full border border-ink/20 bg-paper/95 shadow transition hover:bg-paper disabled:pointer-events-none disabled:opacity-40"
-            disabled={showYear}
+            aria-label={
+              playing ? "Pause" : showYear ? "Play the years" : "Play the months"
+            }
+            className="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full border border-ink/20 bg-paper/95 shadow transition hover:bg-paper"
             style={{ color: accent }}
             onClick={togglePlay}
             type="button"
@@ -414,28 +462,23 @@ export function FoodApp() {
               )}
             </svg>
           </button>
-          <div
-            className={`pointer-events-auto flex h-10 min-w-0 flex-1 items-center gap-3 rounded-full border border-ink/20 bg-paper/95 px-4 shadow-lg backdrop-blur-sm ${
-              showYear ? "opacity-60" : ""
-            }`}
-          >
+          <div className="pointer-events-auto flex h-10 min-w-0 flex-1 items-center gap-3 rounded-full border border-ink/20 bg-paper/95 px-4 shadow-lg backdrop-blur-sm">
             <input
-              aria-label="Month"
+              aria-label={showYear ? "Year" : "Month"}
               aria-valuetext={
                 showYear ? `${year} average` : month ? monthLabel(month) : ""
               }
-              className="min-w-0 flex-1 disabled:cursor-default"
-              disabled={showYear}
+              className="min-w-0 flex-1"
               style={{ accentColor: accent }}
-              max={months.length - 1}
+              max={Math.max(stepCount - 1, 0)}
               min={0}
               onChange={(event) => {
                 setPlaying(false);
-                setWantedMonth(months[Number(event.target.value)]);
+                goToStep(Number(event.target.value));
               }}
               step={1}
               type="range"
-              value={showYear ? markerIndex : monthIndex}
+              value={stepIndex}
             />
             {/* Fixed width, so a narrow month like May and a wide one like
                 Sep do not move the slider's right edge between frames. The

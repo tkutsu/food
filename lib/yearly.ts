@@ -76,3 +76,17 @@ export function yearToShow(
   }
   return years[years.length - 1];
 }
+
+/**
+ * The years the yearly timeline steps through: every complete year in which
+ * at least one country has an average. Years before a product's first report
+ * are left off the slider rather than shown as empty maps.
+ */
+export function yearsWithAverages(
+  series: Series,
+  months: readonly string[],
+): number[] {
+  return completeYears(months).filter(
+    (year) => Object.keys(yearAverages(series, months, year)).length > 0,
+  );
+}
