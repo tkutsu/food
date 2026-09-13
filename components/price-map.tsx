@@ -145,7 +145,7 @@ export function PriceMap({
       // fill would let the cheapest country in Europe read as an empty one.
       const style: PathOptions = reported
         ? {
-            fillColor: colorFor(value, scale, sectorId, dark),
+            fillColor: colorFor(value, scale, sectorId),
             fillOpacity: 0.92,
             color: isSelected ? (dark ? "#ffffff" : "#14211f") : border,
             weight: isSelected ? 2.5 : 0.8,

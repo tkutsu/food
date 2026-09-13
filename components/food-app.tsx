@@ -54,7 +54,7 @@ export function FoodApp() {
   const [yearly, setYearly] = useState(true);
 
   const summary = catalog?.sectors.find((entry) => entry.id === sectorId);
-  const accent = sectorAccent(sectorId, dark);
+  const accent = sectorAccent(sectorId);
   const products = useMemo(() => sector?.products ?? [], [sector]);
   // Held rather than set, so a product that exists in the next sector too
   // survives the switch and one that does not falls back to its first.
@@ -367,7 +367,6 @@ export function FoodApp() {
             ? `of a median income, per ${summary?.unit ?? ""}`
             : `per ${summary?.unit ?? ""}`
         }
-        dark={dark}
         format={format}
         scale={scale}
         sectorId={sectorId}

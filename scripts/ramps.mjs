@@ -6,24 +6,14 @@
 // Then paste the output into LIGHT_RAMPS and re-run the palette validator.
 const STEPS = 7;
 
-// Light surface: low is pale and recedes into the paper, high is dark and
-// saturated. The band and chroma envelope are the validated blue ramp's own.
+// Low is pale, high is dark and saturated. The band and chroma envelope are
+// the validated blue ramp's own.
 const LIGHT = {
   from: 0.905,
   to: 0.338,
   chroma: [0.041, 0.079, 0.118, 0.161, 0.150, 0.128, 0.103],
 };
 
-// Dark surface: low is dark and recedes into the page, high is bright and
-// saturated. Not the light ramp reversed, which put the palest, least
-// saturated step on the largest price and made the dearest countries look
-// washed out rather than heavy. Here both lightness and chroma climb with
-// the value, so more money reads as more colour in either mode.
-const DARK = {
-  from: 0.28,
-  to: 0.70,
-  chroma: [0.045, 0.075, 0.105, 0.130, 0.150, 0.165, 0.175],
-};
 
 function oklchToRgb(L, C, hDeg) {
   const h = (hDeg * Math.PI) / 180;
@@ -76,7 +66,7 @@ const SECTORS = {
   beef: 15, fruit: 40, lamb: 62, cereal: 92, "olive-oil": 128,
   vegetables: 155, milk: 250, wine: 320, pigmeat: 350,
 };
-const mode = process.argv[2] === "dark" ? DARK : LIGHT;
+// One set, used in both themes: pale for the cheapest, dark for the dearest.
 for (const [id, hue] of Object.entries(SECTORS)) {
-  console.log(`${id}\t${buildRamp(hue, mode).join(",")}`);
+  console.log(`${id}\t${buildRamp(hue, LIGHT).join(",")}`);
 }

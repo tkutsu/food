@@ -6,7 +6,6 @@ interface LegendProps {
   scale: Scale | null;
   /** Which sector's hue the ramp is drawn from. */
   sectorId: string;
-  dark: boolean;
   /** What one end of the ramp says, already formatted. */
   format: (value: number) => string;
   /** What the two numbers are of, e.g. "per kg". */
@@ -23,13 +22,12 @@ interface LegendProps {
 export function Legend({
   scale,
   sectorId,
-  dark,
   format,
   caption,
   showMissing,
 }: LegendProps) {
   if (!scale) return null;
-  const colors = ramp(sectorId, dark);
+  const colors = ramp(sectorId);
 
   return (
     <div className="pointer-events-none absolute bottom-24 left-2 z-[500] rounded bg-paper/70 px-2 py-1.5 backdrop-blur-sm sm:bottom-8 sm:left-auto sm:right-2">

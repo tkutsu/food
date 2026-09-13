@@ -10,13 +10,20 @@
  * magenta can carry far more chroma than blue, and a share of maximum would
  * make one ramp shout while another whispered.
  *
- * All eighteen pass the sequential gates: monotone lightness, adjacent
- * lightness gaps of at least 0.06, hue spread under three degrees.
- * Regenerate with `pnpm ramps` and `pnpm ramps dark`.
+ * All nine pass the sequential gates: monotone lightness, adjacent lightness
+ * gaps of at least 0.06, hue spread under three degrees. Regenerate with
+ * `pnpm ramps`.
+ *
+ * One set for both themes. Light is cheap and dark is dear, on paper and on
+ * the dark page alike, because that is how people read a colour scale and a
+ * legend that inverts when the theme changes has to be relearned. An earlier
+ * version gave dark mode its own ramps running from near-black to bright; it
+ * followed a textbook rule about the low end receding into the surface, and
+ * read as backwards to the person actually looking at it.
  */
 
-/** Low to high on a light surface. Near-zero is allowed to recede into it. */
-const LIGHT_RAMPS: Record<string, readonly string[]> = {
+/** Low to high: pale for the cheapest country, dark for the dearest. */
+const RAMPS: Record<string, readonly string[]> = {
   "olive-oil": ["#d8e5c9", "#b2cb94", "#8eb15e", "#6c971f", "#557816", "#3f5b0e", "#2b3f06"],
   fruit: ["#f9d7cc", "#eeb09b", "#e28969", "#d45d31", "#af4419", "#87310d", "#602005"],
   vegetables: ["#cbe8d4", "#98d1ab", "#60b983", "#249f5f", "#1a7f4b", "#116037", "#084325"],
@@ -28,46 +35,27 @@ const LIGHT_RAMPS: Record<string, readonly string[]> = {
   wine: ["#ecd7f1", "#d8b1e1", "#c48ad1", "#b062c2", "#9049a0", "#6e347b", "#4e2258"],
 };
 
-export const BIN_COUNT = LIGHT_RAMPS.milk.length;
+export const BIN_COUNT = RAMPS.milk.length;
 
 /** Countries that reported nothing this month, told apart from any price. */
 export const NO_DATA_FILL = "#898781";
 
-/**
- * Against a dark surface: low is dark and recedes into the page, high is
- * bright and saturated. Its own steps, not the light ramp reversed. Reversing
- * put the palest and least saturated step on the largest price, which made
- * the dearest countries look washed out rather than heavy. Here lightness and
- * chroma both climb with the value, so more money reads as more colour in
- * either mode.
- */
-const DARK_RAMPS: Record<string, readonly string[]> = {
-  "olive-oil": ["#222d14", "#2f4212", "#3d570d", "#4d6c13", "#5d821a", "#6e9920", "#80b127"],
-  fruit: ["#3c2117", "#5b2b1a", "#7b351b", "#9b411e", "#ba4e25", "#d95f30", "#f67140"],
-  vegetables: ["#152f1f", "#114629", "#105c35", "#177243", "#1e8a52", "#25a261", "#2cbb71"],
-  beef: ["#3c1f22", "#5b282e", "#7c313a", "#9c3b48", "#bc4757", "#da5668", "#f7687b"],
-  pigmeat: ["#391f2c", "#572940", "#763155", "#943c6b", "#b24981", "#cf5897", "#eb6aae"],
-  lamb: ["#392310", "#563007", "#6f400c", "#8a5112", "#a56219", "#c1741f", "#df8626"],
-  milk: ["#172a3e", "#173c60", "#144f84", "#1463a5", "#1b77c6", "#228ce7", "#4ba3f8"],
-  cereal: ["#31280c", "#473907", "#5d4b0c", "#735e13", "#8b7219", "#a38620", "#bc9b26"],
-  wine: ["#332137", "#4c2c53", "#663870", "#80448d", "#9a53aa", "#b463c6", "#cd76e1"],
-};
-
-export function ramp(sectorId: string, dark: boolean): readonly string[] {
-  const set = dark ? DARK_RAMPS : LIGHT_RAMPS;
-  return set[sectorId] ?? set.milk;
+export function ramp(sectorId: string): readonly string[] {
+  return RAMPS[sectorId] ?? RAMPS.milk;
 }
 
 /**
  * The sector's colour for the furniture that is not the map: the active
- * button, the tickboxes, the slider, and the panel's line. Taken from the
- * same ramp the map is using, at a step that carries white text on the light
- * surface and reads brightly against the dark one.
+ * button, the tickboxes, the slider, and the panel's line. The fifth step of
+ * its ramp, which carries the light paper colour as text at 4.5:1 or better
+ * for every sector, in either theme.
  */
-export function sectorAccent(sectorId: string, dark: boolean): string {
-  const steps = ramp(sectorId, dark);
-  return dark ? steps[5] : steps[4];
+export function sectorAccent(sectorId: string): string {
+  return ramp(sectorId)[4];
 }
+
+/** Text that sits on the accent. Fixed, because the accent does not change. */
+export const ACCENT_INK = "#f4f3ee";
 
 export interface Scale {
   /** Up to `BIN_COUNT - 1` boundaries between bins, ascending and distinct. */
@@ -124,10 +112,9 @@ export function colorFor(
   value: number | null | undefined,
   scale: Scale | null,
   sectorId: string,
-  dark: boolean,
 ): string {
   if (value === null || value === undefined || !scale) return NO_DATA_FILL;
-  return ramp(sectorId, dark)[binOf(value, scale)];
+  return ramp(sectorId)[binOf(value, scale)];
 }
 
 /**

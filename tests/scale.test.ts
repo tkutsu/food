@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCENT_INK,
   BIN_COUNT,
   asDaysOfIncome,
   binOf,
@@ -79,53 +80,63 @@ describe("binOf", () => {
 
 describe("ramp", () => {
   it("gives every sector its own hue", () => {
-    for (const dark of [false, true]) {
-      const mids = SECTORS.map((id) => sectorAccent(id, dark));
-      expect(new Set(mids).size).toBe(SECTORS.length);
+    const accents = SECTORS.map((id) => sectorAccent(id));
+    expect(new Set(accents).size).toBe(SECTORS.length);
+  });
+
+  it("gives every sector a full ramp", () => {
+    for (const id of SECTORS) {
+      expect(ramp(id)).toHaveLength(BIN_COUNT);
+      expect(new Set(ramp(id)).size).toBe(BIN_COUNT);
     }
   });
 
-  it("gives every sector a full ramp in both modes", () => {
-    for (const dark of [false, true]) {
-      for (const id of SECTORS) {
-        expect(ramp(id, dark)).toHaveLength(BIN_COUNT);
-        expect(new Set(ramp(id, dark)).size).toBe(BIN_COUNT);
+  it("runs light for cheap to dark for dear, step by step", () => {
+    for (const id of SECTORS) {
+      const steps = ramp(id).map(luminance);
+      for (let index = 1; index < steps.length; index += 1) {
+        expect(steps[index]).toBeLessThan(steps[index - 1]);
       }
     }
   });
 
-  it("runs faint to strong in both modes, so more money is more colour", () => {
-    // Light surface: the low end is the palest step and the high end the
-    // darkest. Dark surface: the other way round, and not the light ramp
-    // reversed, which would put the washed-out step on the largest price.
-    for (const id of SECTORS) {
-      const light = ramp(id, false);
-      const dark = ramp(id, true);
-      expect(luminance(light[0])).toBeGreaterThan(luminance(light[6]));
-      expect(luminance(dark[0])).toBeLessThan(luminance(dark[6]));
-      expect(dark).not.toEqual([...light].reverse());
-    }
-  });
-
   it("falls back rather than colouring nothing for a sector it lacks", () => {
-    expect(ramp("fertiliser", false)).toHaveLength(BIN_COUNT);
-    expect(ramp("fertiliser", true)).toHaveLength(BIN_COUNT);
+    expect(ramp("fertiliser")).toHaveLength(BIN_COUNT);
   });
 });
 
 describe("colorFor", () => {
-  it("takes the low end from whichever ramp the mode uses", () => {
+  it("gives the cheapest country the palest step", () => {
     const scale = buildScale(OLIVE_OIL)!;
-    expect(colorFor(scale.min, scale, "beef", false)).toBe(ramp("beef", false)[0]);
-    expect(colorFor(scale.min, scale, "beef", true)).toBe(ramp("beef", true)[0]);
-    expect(ramp("beef", true)[0]).not.toBe(ramp("beef", false)[0]);
+    expect(colorFor(scale.min, scale, "beef")).toBe(ramp("beef")[0]);
+    expect(colorFor(scale.max, scale, "beef")).toBe(
+      ramp("beef")[scale.breaks.length],
+    );
   });
 
   it("marks a country with nothing reported apart from every price", () => {
     const scale = buildScale(OLIVE_OIL)!;
-    const missing = colorFor(null, scale, "beef", false);
-    for (const id of SECTORS) expect(ramp(id, false)).not.toContain(missing);
-    expect(colorFor(undefined, scale, "beef", false)).toBe(missing);
+    const missing = colorFor(null, scale, "beef");
+    for (const id of SECTORS) expect(ramp(id)).not.toContain(missing);
+    expect(colorFor(undefined, scale, "beef")).toBe(missing);
+  });
+});
+
+describe("accent", () => {
+  it("carries its text at 4.5:1 or better for every sector", () => {
+    const channel = (value: number) => {
+      const v = value / 255;
+      return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+    };
+    const relative = (hex: string) => {
+      const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+      return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+    };
+    for (const id of SECTORS) {
+      const ink = relative(ACCENT_INK);
+      const fill = relative(sectorAccent(id));
+      expect((ink + 0.05) / (fill + 0.05)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });
 

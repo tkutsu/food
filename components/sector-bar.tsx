@@ -2,6 +2,7 @@
 
 import { SectorIcon } from "@/components/sector-icons";
 import { Toggle } from "@/components/toggle";
+import { ACCENT_INK } from "@/lib/scale";
 import type { Product, SectorSummary } from "@/lib/types";
 
 interface SectorBarProps {
@@ -47,15 +48,14 @@ export function SectorBar({
             <button
               aria-selected={active}
               // The active sector wears the hue its own map is drawn in, so
-              // the button and the countries say the same thing. The label
-              // takes the page colour rather than white, which inverts with
-              // the theme and so clears 4.5:1 against both the mid-dark light
-              // accent and the brighter dark one.
+              // the button and the countries say the same thing.
               className={`flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-semibold transition sm:px-3 ${
-                active ? "text-paper" : "text-ink/70 hover:bg-ink/8 hover:text-ink"
+                active ? "" : "text-ink/70 hover:bg-ink/8 hover:text-ink"
               }`}
               key={sector.id}
-              style={active ? { backgroundColor: accent } : undefined}
+              style={
+                active ? { backgroundColor: accent, color: ACCENT_INK } : undefined
+              }
               onClick={() => onSector(sector.id)}
               role="tab"
               title={sector.label}

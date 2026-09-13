@@ -57,5 +57,5 @@ strongest colour is the dearest that month rather than the dearest ever. Prices
 have roughly doubled over the period, which would otherwise paint every recent
 month the same shade. The panel keeps each country's real run.
 
-Faint means cheap and strong means dear, in either theme. Each sector has its
+Light means cheap and dark means dear, in either theme. Each sector has its
 own colour, so beef is red, wine purple, olive oil olive.

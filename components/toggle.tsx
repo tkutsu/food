@@ -1,5 +1,7 @@
 "use client";
 
+import { ACCENT_INK } from "@/lib/scale";
+
 import type { ReactNode } from "react";
 
 /** A tickbox dressed as a pill, wearing the sector's colour when ticked. */
@@ -25,10 +27,10 @@ export function Toggle({
         tall ? "pointer-events-auto h-10 px-4" : "h-8 px-3"
       } ${
         checked
-          ? "border-transparent text-paper"
+          ? "border-transparent"
           : "border-ink/20 bg-paper/95 text-ink/70 hover:text-ink"
       }`}
-      style={checked ? { backgroundColor: accent } : undefined}
+      style={checked ? { backgroundColor: accent, color: ACCENT_INK } : undefined}
       title={title}
     >
       <input
