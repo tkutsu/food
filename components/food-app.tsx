@@ -5,6 +5,7 @@ import { CountryPanel } from "@/components/country-panel";
 import { Legend } from "@/components/legend";
 import { PriceMap } from "@/components/price-map";
 import { SectorBar } from "@/components/sector-bar";
+import { Toggle } from "@/components/toggle";
 import { useCatalog, useDarkMode, useSector } from "@/hooks/use-food-data";
 import {
   asDaysOfIncome,
@@ -16,6 +17,7 @@ import {
   incomeUnitFor,
 } from "@/lib/scale";
 import type { Series } from "@/lib/types";
+import { yearAverages, yearToShow } from "@/lib/yearly";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -46,6 +48,10 @@ export function FoodApp() {
   const [normalised, setNormalised] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [playing, setPlaying] = useState(false);
+  // A year's average is what most visitors want to compare, and it is steady:
+  // no seasonal swing, no country missing because it filed late this month.
+  // The monthly timeline is there for anyone who unticks it.
+  const [yearly, setYearly] = useState(true);
 
   const summary = catalog?.sectors.find((entry) => entry.id === sectorId);
   const accent = sectorAccent(sectorId, dark);
@@ -110,11 +116,42 @@ export function FoodApp() {
   const monthIndex = wantedIndex === -1 ? opensOn : wantedIndex;
   const month = months[monthIndex] ?? "";
 
+  /** The newest complete year with most of the product's countries in it. */
+  const year = useMemo(() => yearToShow(series, months), [months, series]);
+  const showYear = yearly && year !== null;
+
+  const averages = useMemo(
+    () => (year === null ? {} : yearAverages(series, months, year)),
+    [months, series, year],
+  );
+
   const values = useMemo(() => {
     const current: Record<string, number | null> = {};
-    for (const code of countryCodes) current[code] = valueAt(code, monthIndex);
+    for (const code of countryCodes) {
+      if (!showYear) {
+        current[code] = valueAt(code, monthIndex);
+        continue;
+      }
+      const average = averages[code];
+      if (average === undefined) {
+        current[code] = null;
+      } else if (!normalised) {
+        current[code] = average;
+      } else {
+        // Eurostat's income is itself a yearly figure, so a year's average
+        // price meets exactly the income it should be divided by.
+        const income = incomeFor(catalog?.income[code], `${year}-12`);
+        current[code] = income ? asDaysOfIncome(average, income) : null;
+      }
+    }
     return current;
-  }, [countryCodes, monthIndex, valueAt]);
+  }, [
+    averages, catalog, countryCodes, monthIndex, normalised, showYear,
+    valueAt, year,
+  ]);
+
+  /** Where the panel's marker sits: the month on screen, or the year's end. */
+  const markerIndex = showYear ? months.indexOf(`${year}-12`) : monthIndex;
 
   /**
    * The scale describes the month on screen, not the whole run. Twenty-one
@@ -209,6 +246,11 @@ export function FoodApp() {
     setPlaying(true);
   };
 
+  const changeYearly = (value: boolean) => {
+    setPlaying(false);
+    setYearly(value);
+  };
+
   const changeSector = (id: string) => {
     setPlaying(false);
     setSectorId(id);
@@ -248,14 +290,20 @@ export function FoodApp() {
    */
   const premium = useMemo(() => {
     if (!selected || !organicAvailable || !sector || !productId) return null;
-    const conventionalValue =
-      sector.conventional[productId]?.[selected]?.[monthIndex];
-    const organicValue = sector.organic[productId]?.[selected]?.[monthIndex];
+    const pick = (set: Record<string, Series>) =>
+      showYear
+        ? yearAverages(set[productId] ?? {}, months, year!)[selected]
+        : set[productId]?.[selected]?.[monthIndex];
+    const conventionalValue = pick(sector.conventional);
+    const organicValue = pick(sector.organic);
     if (!conventionalValue || !organicValue) return null;
     const share = Math.round((organicValue / conventionalValue - 1) * 100);
     if (share === 0) return "the same";
     return share > 0 ? `${share}% more` : `${-share}% less`;
-  }, [monthIndex, organicAvailable, productId, sector, selected]);
+  }, [
+    monthIndex, months, organicAvailable, productId, sector, selected,
+    showYear, year,
+  ]);
 
   return (
     <main className="relative h-dvh overflow-hidden">
@@ -328,10 +376,28 @@ export function FoodApp() {
 
       {/* Timeline, across the bottom */}
       {months.length > 0 && (
-        <div className="pointer-events-none absolute inset-x-2 bottom-8 z-[500] flex items-center gap-2 sm:inset-x-auto sm:left-2 sm:w-[min(28rem,60vw)]">
+        <div className="pointer-events-none absolute inset-x-2 bottom-8 z-[500] flex items-center gap-2 sm:inset-x-auto sm:left-2 sm:w-[min(36rem,70vw)]">
+          <Toggle
+            accent={accent}
+            checked={yearly}
+            // "Yearly" alone on a phone: the full label cost the slider
+            // beside it all but 44 pixels at 375 wide.
+            label={
+              <>
+                <span className="sm:hidden">Yearly</span>
+                <span className="hidden sm:inline">Yearly average</span>
+              </>
+            }
+            onChange={changeYearly}
+            tall
+            title="Untick to step through the months"
+          />
+          {/* Left in place but switched off while the yearly average is on,
+              so the tickbox beside it plainly says what unticking does. */}
           <button
             aria-label={playing ? "Pause" : "Play the months"}
-            className="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full border border-ink/20 bg-paper/95 shadow transition hover:bg-paper"
+            className="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full border border-ink/20 bg-paper/95 shadow transition hover:bg-paper disabled:pointer-events-none disabled:opacity-40"
+            disabled={showYear}
             style={{ color: accent }}
             onClick={togglePlay}
             type="button"
@@ -349,11 +415,18 @@ export function FoodApp() {
               )}
             </svg>
           </button>
-          <div className="pointer-events-auto flex h-10 min-w-0 flex-1 items-center gap-3 rounded-full border border-ink/20 bg-paper/95 px-4 shadow-lg backdrop-blur-sm">
+          <div
+            className={`pointer-events-auto flex h-10 min-w-0 flex-1 items-center gap-3 rounded-full border border-ink/20 bg-paper/95 px-4 shadow-lg backdrop-blur-sm ${
+              showYear ? "opacity-60" : ""
+            }`}
+          >
             <input
               aria-label="Month"
-              aria-valuetext={month ? monthLabel(month) : ""}
-              className="min-w-0 flex-1"
+              aria-valuetext={
+                showYear ? `${year} average` : month ? monthLabel(month) : ""
+              }
+              className="min-w-0 flex-1 disabled:cursor-default"
+              disabled={showYear}
               style={{ accentColor: accent }}
               max={months.length - 1}
               min={0}
@@ -363,13 +436,13 @@ export function FoodApp() {
               }}
               step={1}
               type="range"
-              value={monthIndex}
+              value={showYear ? markerIndex : monthIndex}
             />
             {/* Fixed width, so a narrow month like May and a wide one like
                 Sep do not move the slider's right edge between frames. The
                 gap takes up the difference instead. */}
             <span className="w-[4.5rem] shrink-0 text-right text-xs font-semibold tabular-nums">
-              {month ? shortMonth(month) : "--"}
+              {showYear ? `${year} avg` : month ? shortMonth(month) : "--"}
             </span>
           </div>
         </div>
@@ -387,8 +460,8 @@ export function FoodApp() {
             detail={product?.detail}
             headline={selectedValue === null ? null : format(selectedValue)}
             history={history}
-            monthIndex={monthIndex}
-            monthLabel={month ? shortMonth(month) : ""}
+            monthIndex={markerIndex}
+            monthLabel={showYear ? `${year} average` : month ? shortMonth(month) : ""}
             accent={accent}
             name={catalog.countries[selected] ?? selected}
             onClose={() => setSelected(null)}

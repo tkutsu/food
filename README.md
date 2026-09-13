@@ -16,6 +16,10 @@ The choices are the things a shopper buys. The Commission also publishes feed
 grain, lamp oil, and eight grades of beef carcass sorted by the animal's age and
 sex. Those are left out.
 
+The map opens on each country's average price for the last full year, which is
+the steadiest thing to compare: no seasonal swing, no country missing because it
+filed late this month. Untick "Yearly average" and the timeline wakes up.
+
 Press play and the map runs to last month in about twenty seconds. Watch the two
 numbers beside the colour ramp rather than the colours. On extra virgin olive oil
 they read 3.39 to 7.31 euro a kilo in June 2022, climb to 8.77 to 12.6 by

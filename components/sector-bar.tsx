@@ -1,6 +1,7 @@
 "use client";
 
 import { SectorIcon } from "@/components/sector-icons";
+import { Toggle } from "@/components/toggle";
 import type { Product, SectorSummary } from "@/lib/types";
 
 interface SectorBarProps {
@@ -100,40 +101,5 @@ export function SectorBar({
         />
       </div>
     </div>
-  );
-}
-
-function Toggle({
-  accent,
-  checked,
-  label,
-  onChange,
-  title,
-}: {
-  accent: string;
-  checked: boolean;
-  label: string;
-  onChange: (value: boolean) => void;
-  title?: string;
-}) {
-  return (
-    <label
-      className={`flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-xs font-semibold shadow backdrop-blur-sm transition ${
-        checked
-          ? "border-transparent text-paper"
-          : "border-ink/20 bg-paper/95 text-ink/70 hover:text-ink"
-      }`}
-      style={checked ? { backgroundColor: accent } : undefined}
-      title={title}
-    >
-      <input
-        checked={checked}
-        className="size-3.5"
-        onChange={(event) => onChange(event.target.checked)}
-        style={{ accentColor: accent }}
-        type="checkbox"
-      />
-      {label}
-    </label>
   );
 }
