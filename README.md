@@ -7,10 +7,14 @@ Live at https://food.themos.dev
 
 ## What you can do with it
 
-Pick a sector along the top: olive oil, fruit, vegetables, beef, pigmeat, lamb,
-milk, cereals, wine. Each carries its own products, so you can colour the map by
-extra virgin rather than olive oil in general, or by tomatoes rather than
-vegetables as a whole, and each is drawn in its own colour.
+Pick a sector along the top: olive oil, fruit, vegetables, beef, pork, lamb,
+milk, wheat, wine. Some carry a choice, so you can colour the map by extra virgin
+rather than virgin, veal rather than beef, or tomatoes rather than vegetables as
+a whole, and each is drawn in its own colour.
+
+The choices are the things a shopper buys. The Commission also publishes feed
+grain, lamp oil, and eight grades of beef carcass sorted by the animal's age and
+sex. Those are left out.
 
 Press play and the map runs to last month in about twenty seconds. Watch the two
 numbers beside the colour ramp rather than the colours. On extra virgin olive oil

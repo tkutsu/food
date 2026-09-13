@@ -2,6 +2,8 @@
 export interface Product {
   id: string;
   label: string;
+  /** What the number is, in a line: the stage, the grade, the carcass. */
+  detail?: string;
   /** Whether an organic price is reported alongside this product. */
   organic?: boolean;
 }

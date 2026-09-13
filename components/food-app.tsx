@@ -379,11 +379,12 @@ export function FoodApp() {
       <div className="pointer-events-none absolute right-2 bottom-20 z-[501] flex flex-col items-end gap-2 sm:bottom-24">
         {selected && catalog && summary && (
           <CountryPanel
-            caption={
-              normalised
-                ? `of a median income, per ${summary.unit}`
-                : `per ${summary.unit}${product ? ` · ${product.label}` : ""}`
-            }
+            // The product is named only when the sector offers a choice;
+            // "per kg, Pork" under the Pork button says nothing twice.
+            caption={`${normalised ? "of a median income, " : ""}per ${summary.unit}${
+              product && products.length > 1 ? `, ${product.label.toLowerCase()}` : ""
+            }`}
+            detail={product?.detail}
             headline={selectedValue === null ? null : format(selectedValue)}
             history={history}
             monthIndex={monthIndex}

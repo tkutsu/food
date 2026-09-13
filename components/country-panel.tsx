@@ -6,6 +6,8 @@ interface CountryPanelProps {
   headline: string | null;
   /** What the headline is per, e.g. "per kg" or "of a median income, per kg". */
   caption: string;
+  /** What the number actually is: the stage, the grade, the carcass. */
+  detail?: string;
   /** Every month of this country's series, for the shape behind the number. */
   history: readonly (number | null)[];
   /** The series drawn dashed behind the main one, where there is one. */
@@ -50,6 +52,7 @@ export function CountryPanel({
   name,
   headline,
   caption,
+  detail,
   history,
   compareHistory,
   compareLabel,
@@ -98,6 +101,7 @@ export function CountryPanel({
         {headline ?? <span className="text-base text-ink/45">Not reported</span>}
       </p>
       <p className="m-0 text-xs text-ink/55">{caption}</p>
+      {detail && <p className="m-0 mt-0.5 text-[11px] text-ink/45">{detail}</p>}
 
       {organicPremium && (
         <p className="m-0 mt-1 text-xs text-ink/70">

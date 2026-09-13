@@ -69,7 +69,26 @@ interface Reading {
   unit: string;
 }
 
+/**
+ * One product a sector offers, in words a shopper would use. `from` is the
+ * name the API reports it under, `detail` says what the number actually is.
+ */
+interface CuratedProduct {
+  from: string;
+  label: string;
+  detail?: string;
+}
+
 interface Sector extends Omit<SectorSummary, "organic"> {
+  /**
+   * The products to keep, in the order the dropdown shows them, the first
+   * being the default. Left out, the sector keeps its best covered products
+   * under the API's own names, which only fruit and vegetables do: their
+   * names are already the ones on a market stall.
+   */
+  products?: readonly CuratedProduct[];
+  /** What a product's number is, for products with no detail of their own. */
+  detail?: string;
   /** Path under the API base, given a member state. */
   path: (memberState: string) => string;
   /** Pulls the readings out of one country's response. */
@@ -222,6 +241,13 @@ const SECTORS: Sector[] = [
     id: "olive-oil",
     label: "Olive oil",
     unit: "kg",
+    // Lampante is lamp oil, unfit to eat until refined, and refined olive oil
+    // is an ingredient blended into the bottles rather than one of them.
+    products: [
+      { from: "Extra virgin olive oil (up to 0.8%)", label: "Extra virgin" },
+      { from: "Virgin olive oil (up to 2%)", label: "Virgin" },
+    ],
+    detail: "Sold in bulk, at the mill or market",
     note: "Weekly prices at every reporting market, averaged to a national month. Eight countries press enough oil to report.",
     path: (ms) => `oliveOil/prices?memberStateCodes=${ms}`,
     read: weekly("product"),
@@ -230,6 +256,7 @@ const SECTORS: Sector[] = [
     id: "fruit",
     label: "Fruit",
     unit: "kg",
+    detail: "Wholesale, as it leaves the packing station",
     note: `Weekly ${PRODUCE_STAGE.toLowerCase()}s, the one stage of the supply chain most of the Union reports.`,
     path: (ms) =>
       `fruitAndVegetable/pricesSupplyChain?memberStateCodes=${ms}`,
@@ -240,6 +267,7 @@ const SECTORS: Sector[] = [
     id: "vegetables",
     label: "Vegetables",
     unit: "kg",
+    detail: "Wholesale, as it leaves the packing station",
     note: `Weekly ${PRODUCE_STAGE.toLowerCase()}s, the one stage of the supply chain most of the Union reports.`,
     path: (ms) =>
       `fruitAndVegetable/pricesSupplyChain?memberStateCodes=${ms}`,
@@ -250,6 +278,22 @@ const SECTORS: Sector[] = [
     id: "beef",
     label: "Beef",
     unit: "kg",
+    // The API splits beef into eight carcass categories by the animal's age
+    // and sex. Nobody buys a young bull or a steer; they buy beef or veal.
+    // Heifers stand for beef: prime meat, reported everywhere, and the one
+    // category with an organic price beside it.
+    products: [
+      {
+        from: "Heifers",
+        label: "Beef",
+        detail: "Heifer carcasses, the prime grade, at the slaughterhouse",
+      },
+      {
+        from: "Calves slaughtered <8M",
+        label: "Veal",
+        detail: "Calves under eight months, at the slaughterhouse",
+      },
+    ],
     note: "Weekly carcass prices by category, averaged to a national month.",
     path: (ms) => `beef/prices?memberStateCodes=${ms}`,
     read: weekly("category"),
@@ -257,8 +301,17 @@ const SECTORS: Sector[] = [
   },
   {
     id: "pigmeat",
-    label: "Pigmeat",
+    label: "Pork",
     unit: "kg",
+    // S, E and R are grades on the EU's lean-meat scale for pig carcasses.
+    // Class E is the one the Commission quotes as its reference pig price.
+    products: [
+      {
+        from: "E",
+        label: "Pork",
+        detail: "Class E carcasses, the reference grade, at the slaughterhouse",
+      },
+    ],
     note: "Weekly carcass prices by grade, plus the price of a piglet.",
     path: (ms) => `pigmeat/prices?memberStateCodes=${ms}`,
     read: weekly("pigClass"),
@@ -267,6 +320,20 @@ const SECTORS: Sector[] = [
     id: "lamb",
     label: "Lamb",
     unit: "kg",
+    // Both stay: Greece and much of the Mediterranean report only the light
+    // carcass, so dropping it would take them off the map.
+    products: [
+      {
+        from: "Heavy Lamb",
+        label: "Lamb",
+        detail: "Heavier carcasses, at the slaughterhouse",
+      },
+      {
+        from: "Light Lamb",
+        label: "Young lamb",
+        detail: "Light carcasses, as sold around the Mediterranean",
+      },
+    ],
     note: "Weekly carcass prices, split into light and heavy lambs.",
     path: (ms) => `sheepAndGoat/prices?memberStateCodes=${ms}`,
     read: weekly("category"),
@@ -275,6 +342,16 @@ const SECTORS: Sector[] = [
     id: "milk",
     label: "Milk",
     unit: "kg",
+    // The feed also lists organic raw milk as a product of its own, which
+    // would sit in the dropdown beside the organic tickbox saying the same
+    // thing. The tickbox covers the same 22 countries.
+    products: [
+      {
+        from: "Raw milk",
+        label: "Milk",
+        detail: "Paid to the farmer, before it is processed",
+      },
+    ],
     note: "The monthly price a dairy pays a farmer for raw milk, before it becomes anything else.",
     path: (ms) => `rawMilk/prices?memberStateCodes=${ms}`,
     read: (rows, memberState) => {
@@ -300,8 +377,23 @@ const SECTORS: Sector[] = [
   },
   {
     id: "cereal",
-    label: "Cereals",
+    label: "Wheat",
     unit: "kg",
+    // Feed barley, feed maize, feed wheat and feed oats go to animals, and
+    // malting barley goes to brewers. What reaches a kitchen is wheat, for
+    // bread and for pasta. "Cereals" also reads as breakfast to a shopper.
+    products: [
+      {
+        from: "Breadmaking common wheat",
+        label: "Bread wheat",
+        detail: "Grain for flour, wholesale",
+      },
+      {
+        from: "Durum wheat",
+        label: "Durum wheat",
+        detail: "Grain for pasta, wholesale",
+      },
+    ],
     note: "Weekly prices at the named markets of each country, across every stage from the farm gate to the port, averaged to a national month.",
     path: (ms) => `cereal/prices?memberStateCodes=${ms}`,
     read: weekly("productName"),
@@ -311,6 +403,13 @@ const SECTORS: Sector[] = [
     id: "wine",
     label: "Wine",
     unit: "litre",
+    // White first: all four reporting countries price it, while red and
+    // rosé is missing one, and the default should fill the most map.
+    products: [
+      { from: "White", label: "White" },
+      { from: "Red and rosé", label: "Red and rosé" },
+    ],
+    detail: "In bulk, every quality tier together",
     note: "Only Germany, Spain, France and Italy report wine, each in its own words, so the prices are gathered by colour.",
     path: (ms) => `wine/prices?memberStateCodes=${ms}`,
     read: (rows, memberState) => {
@@ -350,13 +449,24 @@ function produce(kind: "fruit" | "vegetable") {
       readings.push({
         country: memberState,
         month,
-        product: titleCase(classified.produce),
+        product: produceLabel(classified.produce),
         price,
         unit: String(row.unit ?? ""),
       });
     }
     return readings;
   };
+}
+
+/** The few produce names the API writes differently from a shopping list. */
+const PRODUCE_NAMES: Record<string, string> = {
+  "table grapes": "Grapes",
+  cauliflowers: "Cauliflower",
+  lettuces: "Lettuce",
+};
+
+function produceLabel(produce: string): string {
+  return PRODUCE_NAMES[produce] ?? titleCase(produce);
 }
 
 function titleCase(text: string): string {
@@ -367,7 +477,7 @@ function titleCase(text: string): string {
 function matchOrganicProduce(organicName: string): string | null {
   const stripped = organicName.replace(/^organic[\s-]*/i, "");
   const classified = classifyProduce(stripped);
-  return classified ? titleCase(classified.produce) : null;
+  return classified ? produceLabel(classified.produce) : null;
 }
 
 /** The organic feed names a grain loosely; the sector names it precisely. */
@@ -417,6 +527,27 @@ function collect(readings: readonly Reading[], bucket: Bucket): void {
 }
 
 /** The products worth a slot in the selector, widest coverage first. */
+/**
+ * A sector's curated products that the run actually found, in their declared
+ * order. A curated name the API no longer reports is said out loud: that is
+ * an upstream rename, and silently shipping a sector with no default product
+ * is how a button goes blank without anyone noticing.
+ */
+function pickCurated(sector: Sector, bucket: Bucket): string[] {
+  const picked: string[] = [];
+  for (const { from } of sector.products ?? []) {
+    const countries = bucket.get(from)?.size ?? 0;
+    if (countries >= MIN_COUNTRIES) {
+      picked.push(from);
+    } else {
+      console.warn(
+        `  ${sector.id}: "${from}" reported by ${countries} countries, left out`,
+      );
+    }
+  }
+  return picked;
+}
+
 function rankProducts(bucket: Bucket): string[] {
   return [...bucket.entries()]
     .map(([product, byCountry]) => {
@@ -456,13 +587,22 @@ function serialise(
   return out;
 }
 
-/** How many distinct countries a set of series covers. */
-function coverage(sets: Record<string, Series>): number {
-  const countries = new Set<string>();
-  for (const series of Object.values(sets)) {
-    for (const country of Object.keys(series)) countries.add(country);
+/**
+ * Which product, if any, this run reports in noticeably fewer countries than
+ * the committed file. Compared product by product rather than as a sector
+ * total, and only over the products both have: dropping feed grain from
+ * cereals shrinks the sector's reach on purpose, and that must not read as
+ * a rate-limited run.
+ */
+function lostCoverage(fresh: SectorData, existing: SectorData): string | null {
+  for (const [id, series] of Object.entries(fresh.conventional)) {
+    const before = existing.conventional[id];
+    if (!before) continue;
+    const now = Object.keys(series).length;
+    const then = Object.keys(before).length;
+    if (now < then * 0.9) return `${id} in ${now} countries, was ${then}`;
   }
-  return countries.size;
+  return null;
 }
 
 /**
@@ -654,7 +794,9 @@ async function main() {
 
     const bucket: Bucket = new Map();
     for (const readings of responses) collect(readings, bucket);
-    const products = rankProducts(bucket);
+    const products = sector.products
+      ? pickCurated(sector, bucket)
+      : rankProducts(bucket);
     const conventional = serialise(bucket, products, months);
 
     // Organic prices, matched onto the products the sector already has.
@@ -693,16 +835,26 @@ async function main() {
       }
     }
     const organic = serialise(organicBucket, products, months);
+    // An organic tickbox that paints one country is not a comparison. The
+    // same threshold as a product: at least a few countries or nothing.
+    for (const [id, series] of Object.entries(organic)) {
+      if (Object.keys(series).length < MIN_COUNTRIES) delete organic[id];
+    }
 
     const offset = firstFilled(conventional, months.length);
     const withOrganic = new Set(Object.keys(organic));
     const catalogue: Product[] = products
       .filter((product) => conventional[slug(product)])
-      .map((product) => ({
-        id: slug(product),
-        label: product,
-        ...(withOrganic.has(slug(product)) ? { organic: true } : {}),
-      }));
+      .map((product) => {
+        const curated = sector.products?.find(({ from }) => from === product);
+        const detail = curated?.detail ?? sector.detail;
+        return {
+          id: slug(product),
+          label: curated?.label ?? product,
+          ...(detail ? { detail } : {}),
+          ...(withOrganic.has(slug(product)) ? { organic: true } : {}),
+        };
+      });
 
     const data: SectorData = {
       id: sector.id,
@@ -717,13 +869,9 @@ async function main() {
     // afternoon is noise; losing a tenth of them is a worse map than the one
     // already committed, so that one stays.
     const existing = await readExisting(`${sector.id}.json`);
-    const fresh = coverage(data.conventional);
-    const kept = existing ? coverage(existing.conventional) : 0;
-    if (existing && fresh < kept * 0.9) {
-      console.warn(
-        `${sector.id.padEnd(11)} kept: ${fresh} countries this run against ` +
-          `${kept} committed`,
-      );
+    const thinner = existing ? lostCoverage(data, existing) : null;
+    if (existing && thinner) {
+      console.warn(`${sector.id.padEnd(11)} kept the committed file: ${thinner}`);
       summaries.push({
         id: sector.id,
         label: sector.label,
