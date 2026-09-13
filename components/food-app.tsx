@@ -1,0 +1,419 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CountryPanel } from "@/components/country-panel";
+import { Legend } from "@/components/legend";
+import { PriceMap } from "@/components/price-map";
+import { SectorBar } from "@/components/sector-bar";
+import { useCatalog, useDarkMode, useSector } from "@/hooks/use-food-data";
+import {
+  asDaysOfIncome,
+  sectorAccent,
+  buildScale,
+  formatIncome,
+  formatPrice,
+  incomeFor,
+  incomeUnitFor,
+} from "@/lib/scale";
+import type { Series } from "@/lib/types";
+
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+function monthLabel(month: string): string {
+  const [year, index] = month.split("-");
+  return `${MONTH_NAMES[Number(index) - 1]} ${year}`;
+}
+
+const MONTH_ABBREVIATIONS = MONTH_NAMES.map((name) => name.slice(0, 3));
+
+/** "Aug 2026". Short enough to sit beside the timeline at any width. */
+function shortMonth(month: string): string {
+  const [year, index] = month.split("-");
+  return `${MONTH_ABBREVIATIONS[Number(index) - 1]} ${year}`;
+}
+
+export function FoodApp() {
+  const { catalog, error: catalogError } = useCatalog();
+  const [dark, toggleDark] = useDarkMode();
+  const [sectorId, setSectorId] = useState("olive-oil");
+  const { sector, error: sectorError } = useSector(sectorId);
+  const [wantedProduct, setWantedProduct] = useState<string | null>(null);
+  const [wantedMonth, setWantedMonth] = useState<string | null>(null);
+  const [organic, setOrganic] = useState(false);
+  const [normalised, setNormalised] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [playing, setPlaying] = useState(false);
+
+  const summary = catalog?.sectors.find((entry) => entry.id === sectorId);
+  const accent = sectorAccent(sectorId, dark);
+  const products = useMemo(() => sector?.products ?? [], [sector]);
+  // Held rather than set, so a product that exists in the next sector too
+  // survives the switch and one that does not falls back to its first.
+  const product =
+    products.find((entry) => entry.id === wantedProduct) ?? products[0] ?? null;
+  const productId = product?.id ?? "";
+  const organicAvailable = product?.organic === true;
+  const showOrganic = organic && organicAvailable;
+
+  const months = useMemo(
+    () => (catalog && sector ? catalog.months.slice(sector.offset) : []),
+    [catalog, sector],
+  );
+  const series: Series = useMemo(() => {
+    if (!sector || !productId) return {};
+    const set = showOrganic ? sector.organic : sector.conventional;
+    return set[productId] ?? {};
+  }, [productId, sector, showOrganic]);
+
+  const countryCodes = useMemo(
+    () => Object.keys(catalog?.countries ?? {}),
+    [catalog],
+  );
+
+  /** Turns a country's reported price into what the map is colouring by. */
+  const valueAt = useCallback(
+    (code: string, index: number): number | null => {
+      const reported = series[code]?.[index];
+      if (reported === null || reported === undefined) return null;
+      if (!normalised) return reported;
+      const income = incomeFor(catalog?.income[code], months[index] ?? "");
+      return income ? asDaysOfIncome(reported, income) : null;
+    },
+    [catalog, months, normalised, series],
+  );
+
+  /**
+   * The month the map opens on: the newest one that still has most of the
+   * sector's countries in it. Not simply the newest with anything in it,
+   * because sectors trail off rather than stop. Wine's last month holds one
+   * country out of four, and opening on a map of one country is worse than
+   * opening on a month that is a few behind.
+   */
+  const opensOn = useMemo(() => {
+    const counts = months.map(
+      (_, index) =>
+        countryCodes.filter((code) => valueAt(code, index) !== null).length,
+    );
+    const fullest = Math.max(0, ...counts);
+    if (fullest === 0) return Math.max(months.length - 1, 0);
+    const enough = Math.max(1, Math.ceil(fullest * 0.6));
+    for (let index = counts.length - 1; index >= 0; index -= 1) {
+      if (counts[index] >= enough) return index;
+    }
+    return Math.max(months.length - 1, 0);
+  }, [countryCodes, months, valueAt]);
+
+  const wantedIndex = wantedMonth ? months.indexOf(wantedMonth) : -1;
+  const monthIndex = wantedIndex === -1 ? opensOn : wantedIndex;
+  const month = months[monthIndex] ?? "";
+
+  const values = useMemo(() => {
+    const current: Record<string, number | null> = {};
+    for (const code of countryCodes) current[code] = valueAt(code, monthIndex);
+    return current;
+  }, [countryCodes, monthIndex, valueAt]);
+
+  /**
+   * The scale describes the month on screen, not the whole run. Twenty-one
+   * years of food prices trend far harder than countries differ from each
+   * other in any one month: beef spans 430 to 796 euro across the Union in
+   * August 2026, a spread of under two to one that holds throughout, while
+   * the same series doubles over the period. One scale for the whole timeline
+   * therefore spends six of its seven colours on the past and paints the
+   * present in a single flat shade.
+   *
+   * The cost is that a country changing colour during playback means it moved
+   * relative to the rest of Europe rather than in absolute terms. The legend
+   * carries the month's own range so the shift is never hidden, and the panel
+   * draws the country's real series behind its number.
+   */
+  const scale = useMemo(() => {
+    const present: number[] = [];
+    for (const code of countryCodes) {
+      const value = values[code];
+      if (value !== null && value !== undefined) present.push(value);
+    }
+    return buildScale(present);
+  }, [countryCodes, values]);
+
+  /**
+   * One unit for the whole series, not for the month on screen, because a
+   * legend that flips between minutes and hours mid-playback cannot be read.
+   *
+   * Chosen from the median rather than the largest value. Milk's dearest
+   * reading in twenty-one years just crosses an hour, which under a
+   * largest-value rule labelled the entire sector in hours and printed
+   * "0.10 hours" for a litre of milk today. The median suits the numbers a
+   * visitor actually sees, and the rare outlier simply reads large.
+   */
+  const incomeUnit = useMemo(() => {
+    if (!normalised) return incomeUnitFor(0);
+    const all: number[] = [];
+    for (let index = 0; index < months.length; index += 1) {
+      for (const code of countryCodes) {
+        const value = valueAt(code, index);
+        if (value !== null) all.push(value);
+      }
+    }
+    if (all.length === 0) return incomeUnitFor(0);
+    all.sort((a, b) => a - b);
+    return incomeUnitFor(all[Math.floor(all.length / 2)]);
+  }, [countryCodes, months.length, normalised, valueAt]);
+
+  const format = useCallback(
+    (value: number) =>
+      normalised ? formatIncome(value, incomeUnit) : formatPrice(value),
+    [incomeUnit, normalised],
+  );
+
+  const label = useCallback(
+    (code: string, fallbackName: string) => {
+      const name = catalog?.countries[code] ?? fallbackName;
+      const value = values[code];
+      return value === null || value === undefined
+        ? `${name} — not reported`
+        : `${name} — ${format(value)}`;
+    },
+    [catalog, format, values],
+  );
+
+  // Playback walks the timeline without the timer depending on every render.
+  const indexRef = useRef(monthIndex);
+  useEffect(() => {
+    indexRef.current = monthIndex;
+  }, [monthIndex]);
+
+  useEffect(() => {
+    if (!playing || months.length === 0) return;
+    const timer = setInterval(() => {
+      const next = indexRef.current + 1;
+      if (next >= months.length) {
+        setPlaying(false);
+        return;
+      }
+      indexRef.current = next;
+      setWantedMonth(months[next]);
+    }, 90);
+    return () => clearInterval(timer);
+  }, [months, playing]);
+
+  const togglePlay = () => {
+    if (playing) {
+      setPlaying(false);
+      return;
+    }
+    if (monthIndex >= months.length - 1) setWantedMonth(months[0]);
+    setPlaying(true);
+  };
+
+  const changeSector = (id: string) => {
+    setPlaying(false);
+    setSectorId(id);
+  };
+
+  const missing = countryCodes.some((code) => values[code] === null);
+  const selectedValue = selected ? values[selected] : null;
+  const history = useMemo(
+    () =>
+      selected
+        ? months.map((_, index) => valueAt(selected, index))
+        : [],
+    [months, selected, valueAt],
+  );
+  /** The series drawn dashed: whichever of the two is not on the map. */
+  const compareHistory = useMemo(() => {
+    if (!selected || !sector || !productId || !organicAvailable) return undefined;
+    const set = showOrganic ? sector.conventional : sector.organic;
+    const other = set[productId]?.[selected];
+    if (!other) return undefined;
+    return months.map((_, index) => {
+      const reported = other[index];
+      if (reported === null || reported === undefined) return null;
+      if (!normalised) return reported;
+      const income = incomeFor(catalog?.income[selected], months[index] ?? "");
+      return income ? asDaysOfIncome(reported, income) : null;
+    });
+  }, [
+    catalog, months, normalised, organicAvailable, productId,
+    sector, selected, showOrganic,
+  ]);
+
+  /**
+   * The organic gap for the month on screen. Organic is usually dearer but
+   * not always, and a month where it is cheaper is worth seeing rather than
+   * hiding, so the wording carries the sign.
+   */
+  const premium = useMemo(() => {
+    if (!selected || !organicAvailable || !sector || !productId) return null;
+    const conventionalValue =
+      sector.conventional[productId]?.[selected]?.[monthIndex];
+    const organicValue = sector.organic[productId]?.[selected]?.[monthIndex];
+    if (!conventionalValue || !organicValue) return null;
+    const share = Math.round((organicValue / conventionalValue - 1) * 100);
+    if (share === 0) return "the same";
+    return share > 0 ? `${share}% more` : `${-share}% less`;
+  }, [monthIndex, organicAvailable, productId, sector, selected]);
+
+  return (
+    <main className="relative h-dvh overflow-hidden">
+      <PriceMap
+        dark={dark}
+        label={label}
+        onSelect={setSelected}
+        scale={scale}
+        sectorId={sectorId}
+        selected={selected}
+        values={values}
+      />
+
+      {catalog && (
+        <SectorBar
+          accent={accent}
+          normalised={normalised}
+          onNormalised={setNormalised}
+          onOrganic={setOrganic}
+          onProduct={(id) => setWantedProduct(id)}
+          onSector={changeSector}
+          organic={showOrganic}
+          organicAvailable={organicAvailable}
+          productId={productId}
+          products={products}
+          sectorId={sectorId}
+          sectors={catalog.sectors}
+        />
+      )}
+
+      <button
+        aria-label={dark ? "Switch to light" : "Switch to dark"}
+        className="absolute top-2 right-2 z-[501] flex size-8 items-center justify-center rounded-full border border-ink/20 bg-paper/95 text-ink/70 shadow backdrop-blur-sm transition hover:text-ink sm:top-3 sm:right-3"
+        onClick={toggleDark}
+        type="button"
+      >
+        <svg
+          aria-hidden="true"
+          className="size-4"
+          fill="none"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+          viewBox="0 0 24 24"
+        >
+          {dark ? (
+            <>
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+            </>
+          ) : (
+            <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z" />
+          )}
+        </svg>
+      </button>
+
+      <Legend
+        caption={
+          normalised
+            ? `of a median income, per ${summary?.unit ?? ""}`
+            : `per ${summary?.unit ?? ""}`
+        }
+        dark={dark}
+        format={format}
+        scale={scale}
+        sectorId={sectorId}
+        showMissing={missing}
+      />
+
+      {/* Timeline, across the bottom */}
+      {months.length > 0 && (
+        <div className="pointer-events-none absolute inset-x-2 bottom-8 z-[500] flex items-center gap-2 sm:inset-x-auto sm:left-2 sm:w-[min(28rem,60vw)]">
+          <button
+            aria-label={playing ? "Pause" : "Play the months"}
+            className="pointer-events-auto flex size-10 shrink-0 items-center justify-center rounded-full border border-ink/20 bg-paper/95 shadow transition hover:bg-paper"
+            style={{ color: accent }}
+            onClick={togglePlay}
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              className="size-4"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              {playing ? (
+                <path d="M7 5h4v14H7zm6 0h4v14h-4z" />
+              ) : (
+                <path d="M8 5v14l11-7z" />
+              )}
+            </svg>
+          </button>
+          <div className="pointer-events-auto flex h-10 min-w-0 flex-1 items-center gap-3 rounded-full border border-ink/20 bg-paper/95 px-4 shadow-lg backdrop-blur-sm">
+            <input
+              aria-label="Month"
+              aria-valuetext={month ? monthLabel(month) : ""}
+              className="min-w-0 flex-1"
+              style={{ accentColor: accent }}
+              max={months.length - 1}
+              min={0}
+              onChange={(event) => {
+                setPlaying(false);
+                setWantedMonth(months[Number(event.target.value)]);
+              }}
+              step={1}
+              type="range"
+              value={monthIndex}
+            />
+            {/* Fixed width, so a narrow month like May and a wide one like
+                Sep do not move the slider's right edge between frames. The
+                gap takes up the difference instead. */}
+            <span className="w-[4.5rem] shrink-0 text-right text-xs font-semibold tabular-nums">
+              {month ? shortMonth(month) : "--"}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* The panel, and the note about what the numbers are */}
+      <div className="pointer-events-none absolute right-2 bottom-20 z-[501] flex flex-col items-end gap-2 sm:bottom-24">
+        {selected && catalog && summary && (
+          <CountryPanel
+            caption={
+              normalised
+                ? `of a median income, per ${summary.unit}`
+                : `per ${summary.unit}${product ? ` · ${product.label}` : ""}`
+            }
+            headline={selectedValue === null ? null : format(selectedValue)}
+            history={history}
+            monthIndex={monthIndex}
+            monthLabel={month ? shortMonth(month) : ""}
+            accent={accent}
+            name={catalog.countries[selected] ?? selected}
+            onClose={() => setSelected(null)}
+            compareHistory={compareHistory}
+            compareLabel={showOrganic ? "conventional" : "organic"}
+            organicPremium={premium}
+          />
+        )}
+      </div>
+
+      {(catalogError || sectorError) && (
+        <div className="absolute bottom-2 left-1/2 z-[502] flex -translate-x-1/2 items-center gap-3 bg-red-50 px-3 py-1.5 text-xs text-red-900 shadow">
+          <span>
+            {catalogError
+              ? "The price data did not load."
+              : `The ${summary?.label.toLowerCase() ?? "sector"} prices did not load.`}
+          </span>
+          <button
+            className="border-0 bg-transparent p-0 font-bold text-red-900 underline"
+            onClick={() => window.location.reload()}
+            type="button"
+          >
+            Reload
+          </button>
+        </div>
+      )}
+    </main>
+  );
+}
