@@ -17,7 +17,12 @@ import {
   incomeUnitFor,
 } from "@/lib/scale";
 import type { Series } from "@/lib/types";
-import { yearAverages, yearToShow, yearsWithAverages } from "@/lib/yearly";
+import {
+  monthsCovered,
+  yearAverages,
+  yearToShow,
+  yearsWithAverages,
+} from "@/lib/yearly";
 
 /** Playback pace. A month flickers past; a year is held long enough to read. */
 const MONTH_STEP_MS = 90;
@@ -34,6 +39,11 @@ function monthLabel(month: string): string {
 }
 
 const MONTH_ABBREVIATIONS = MONTH_NAMES.map((name) => name.slice(0, 3));
+
+/** "Aug", for saying which months a partial year covers. */
+function monthName(month: string): string {
+  return MONTH_ABBREVIATIONS[Number(month.slice(5, 7)) - 1];
+}
 
 /** "Aug 2026". Short enough to sit beside the timeline at any width. */
 function shortMonth(month: string): string {
@@ -138,6 +148,25 @@ export function FoodApp() {
   const yearIndex = year === null ? 0 : Math.max(years.indexOf(year), 0);
   const showYear = yearly && year !== null;
 
+  /**
+   * The months the year on screen actually spans. For the year in progress
+   * that is January to last month, and the panel says so: an average that
+   * is missing its autumn should not pass for a whole year.
+   */
+  const covered = useMemo(
+    () => (year === null ? null : monthsCovered(months, year)),
+    [months, year],
+  );
+  const partialYear =
+    covered !== null &&
+    !(covered.first.endsWith("-01") && covered.last.endsWith("-12"));
+  const yearLabel =
+    year === null
+      ? ""
+      : partialYear && covered
+        ? `${year} average, ${monthName(covered.first)} to ${monthName(covered.last)}`
+        : `${year} average`;
+
   const averages = useMemo(
     () => (year === null ? {} : yearAverages(series, months, year)),
     [months, series, year],
@@ -168,8 +197,9 @@ export function FoodApp() {
     valueAt, year,
   ]);
 
-  /** Where the panel's marker sits: the month on screen, or the year's end. */
-  const markerIndex = showYear ? months.indexOf(`${year}-12`) : monthIndex;
+  /** Where the panel's marker sits: the month on screen, or the year's last. */
+  const markerIndex =
+    showYear && covered ? months.indexOf(covered.last) : monthIndex;
 
   /**
    * The scale describes the month on screen, not the whole run. Twenty-one
@@ -283,7 +313,7 @@ export function FoodApp() {
   /**
    * Switching granularity keeps your place, once you have moved off the
    * default: a month in 2019 becomes the 2019 average, and the 2019 average
-   * becomes December 2019. Left on the defaults, each mode opens on its own
+   * becomes the last month of 2019. Left on the defaults, each mode opens on its own
    * newest well-covered step instead.
    */
   const changeYearly = (value: boolean) => {
@@ -291,7 +321,7 @@ export function FoodApp() {
     if (value && wantedMonth) {
       setWantedYear(Number(wantedMonth.slice(0, 4)));
     } else if (!value && wantedYear !== null && year !== null) {
-      setWantedMonth(`${year}-12`);
+      if (covered) setWantedMonth(covered.last);
     }
     setYearly(value);
   };
@@ -466,7 +496,7 @@ export function FoodApp() {
             <input
               aria-label={showYear ? "Year" : "Month"}
               aria-valuetext={
-                showYear ? `${year} average` : month ? monthLabel(month) : ""
+                showYear ? yearLabel : month ? monthLabel(month) : ""
               }
               className="min-w-0 flex-1"
               style={{ accentColor: accent }}
@@ -503,7 +533,7 @@ export function FoodApp() {
             headline={selectedValue === null ? null : format(selectedValue)}
             history={history}
             monthIndex={markerIndex}
-            monthLabel={showYear ? `${year} average` : month ? shortMonth(month) : ""}
+            monthLabel={showYear ? yearLabel : month ? shortMonth(month) : ""}
             accent={accent}
             name={catalog.countries[selected] ?? selected}
             onClose={() => setSelected(null)}

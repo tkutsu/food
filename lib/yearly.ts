@@ -1,16 +1,33 @@
 import type { Series } from "@/lib/types";
 
 /**
- * Calendar years the month list holds in full. A year still in progress is
- * left out: January to August is not a year, and for anything seasonal the
- * missing autumn would pull the average one way.
+ * The years the yearly view can show: every year whose December is in the
+ * month list, plus the year in progress, averaged over the months it has so
+ * far.
+ *
+ * The year in progress was left out at first, on the grounds that January to
+ * August is not a year and a missing autumn skews anything seasonal. That is
+ * still true, and the panel says which months a partial year covers, but
+ * leaving it out meant the yearly view could never show this year's prices.
  */
-export function completeYears(months: readonly string[]): number[] {
+export function timelineYears(months: readonly string[]): number[] {
   const years = new Set<number>();
   for (const month of months) {
     if (month.endsWith("-12")) years.add(Number(month.slice(0, 4)));
   }
+  const last = months.at(-1);
+  if (last) years.add(Number(last.slice(0, 4)));
   return [...years].sort((a, b) => a - b);
+}
+
+/** The first and last months a year covers in the list, e.g. Jan and Aug. */
+export function monthsCovered(
+  months: readonly string[],
+  year: number,
+): { first: string; last: string } | null {
+  const inYear = months.filter((month) => month.startsWith(`${year}-`));
+  if (inYear.length === 0) return null;
+  return { first: inYear[0], last: inYear[inYear.length - 1] };
 }
 
 /**
@@ -55,7 +72,7 @@ export function yearAverages(
 }
 
 /**
- * The year the yearly view shows: the newest complete one that still holds
+ * The year the yearly view opens on: the newest one that still holds
  * most of the product's countries, for the same reason the monthly view does
  * not open on a month one country has filed.
  */
@@ -63,7 +80,7 @@ export function yearToShow(
   series: Series,
   months: readonly string[],
 ): number | null {
-  const years = completeYears(months);
+  const years = timelineYears(months);
   if (years.length === 0) return null;
   const counts = years.map(
     (year) => Object.keys(yearAverages(series, months, year)).length,
@@ -78,15 +95,15 @@ export function yearToShow(
 }
 
 /**
- * The years the yearly timeline steps through: every complete year in which
- * at least one country has an average. Years before a product's first report
+ * The years the yearly timeline steps through: every year from
+ * `timelineYears` in which at least one country has an average. Years before a product's first report
  * are left off the slider rather than shown as empty maps.
  */
 export function yearsWithAverages(
   series: Series,
   months: readonly string[],
 ): number[] {
-  return completeYears(months).filter(
+  return timelineYears(months).filter(
     (year) => Object.keys(yearAverages(series, months, year)).length > 0,
   );
 }

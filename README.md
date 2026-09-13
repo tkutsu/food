@@ -16,10 +16,11 @@ The choices are the things a shopper buys. The Commission also publishes feed
 grain, lamp oil, and eight grades of beef carcass sorted by the animal's age and
 sex. Those are left out.
 
-The map opens on each country's average price for the last full year, which is
-the steadiest thing to compare: no seasonal swing, no country missing because it
-filed late this month. The timeline steps a year at a time, back to 2005. Untick
-"Yearly average" and it steps through months instead, keeping your place.
+The map opens on each country's average price so far this year, which is the
+steadiest thing to compare: less seasonal swing, and no country missing because
+it filed late this month. The timeline steps a year at a time, back to 2005, and
+the panel says when a year is still in progress. Untick "Yearly average" and it
+steps through months instead, keeping your place.
 
 Press play with the months showing and the map runs to last month in about
 twenty seconds. Watch the two

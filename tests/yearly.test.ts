@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  completeYears,
+  monthsCovered,
+  timelineYears,
   yearAverages,
   yearToShow,
   yearsWithAverages,
@@ -31,9 +32,22 @@ function filled(entries: [string, number][]): (number | null)[] {
   return values;
 }
 
-describe("completeYears", () => {
-  it("leaves out the year still in progress", () => {
-    expect(completeYears(MONTHS)).toEqual([2024, 2025]);
+describe("timelineYears", () => {
+  it("includes the year in progress, averaged over the months it has", () => {
+    expect(timelineYears(MONTHS)).toEqual([2024, 2025, 2026]);
+  });
+
+  it("counts a year that starts late in a series, as long as it has a December", () => {
+    const fromNovember = MONTHS.filter((month) => month >= "2024-11");
+    expect(timelineYears(fromNovember)).toEqual([2024, 2025, 2026]);
+  });
+});
+
+describe("monthsCovered", () => {
+  it("says which months a year spans in the list", () => {
+    expect(monthsCovered(MONTHS, 2026)).toEqual({ first: "2026-01", last: "2026-08" });
+    expect(monthsCovered(MONTHS, 2025)).toEqual({ first: "2025-01", last: "2025-12" });
+    expect(monthsCovered(MONTHS, 2019)).toBeNull();
   });
 });
 
@@ -75,12 +89,12 @@ describe("yearAverages", () => {
 });
 
 describe("yearToShow", () => {
-  it("picks the newest complete year, not the one in progress", () => {
+  it("opens on the year in progress when most countries have filed it", () => {
     const series = {
       FR: filled([["2025-01", 4], ["2026-01", 5]]),
       DE: filled([["2025-01", 4], ["2026-01", 5]]),
     };
-    expect(yearToShow(series, MONTHS)).toBe(2025);
+    expect(yearToShow(series, MONTHS)).toBe(2026);
   });
 
   it("steps back past a year most countries have not filed", () => {
@@ -100,7 +114,7 @@ describe("yearToShow", () => {
 describe("yearsWithAverages", () => {
   it("steps only through complete years that hold a price", () => {
     const series = { FR: filled([["2025-03", 4], ["2026-02", 5]]) };
-    // 2024 has no price, 2026 is still in progress.
-    expect(yearsWithAverages(series, MONTHS)).toEqual([2025]);
+    // 2024 has no price; 2026 is in progress and counts.
+    expect(yearsWithAverages(series, MONTHS)).toEqual([2025, 2026]);
   });
 });
