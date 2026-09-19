@@ -9,8 +9,8 @@ interface PriceMapProps {
   /** Country code to the value being coloured, null where none was reported. */
   values: Record<string, number | null>;
   scale: Scale | null;
-  /** Which sector's hue the ramp is drawn from. */
-  sectorId: string;
+  /** Which button's hue the ramp is drawn from. */
+  groupId: string;
   dark: boolean;
   selected: string | null;
   /**
@@ -33,7 +33,7 @@ const BORDER_DARK = "#101715";
 export function PriceMap({
   values,
   scale,
-  sectorId,
+  groupId,
   dark,
   selected,
   label,
@@ -148,7 +148,7 @@ export function PriceMap({
       // fill would let the cheapest country in Europe read as an empty one.
       const style: PathOptions = reported
         ? {
-            fillColor: colorFor(value, scale, sectorId),
+            fillColor: colorFor(value, scale, groupId),
             fillOpacity: 0.92,
             color: isSelected ? (dark ? "#ffffff" : "#14211f") : border,
             weight: isSelected ? 2.5 : 0.8,
@@ -167,7 +167,7 @@ export function PriceMap({
       layer.setTooltipContent(label(code, namesRef.current.get(code) ?? code));
       if (isSelected) layer.bringToFront();
     }
-  }, [dark, label, ready, scale, sectorId, selected, values]);
+  }, [dark, groupId, label, ready, scale, selected, values]);
 
   return (
     <div

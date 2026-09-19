@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CountryPanel } from "@/components/country-panel";
 import { Legend } from "@/components/legend";
 import { PriceMap } from "@/components/price-map";
-import { SectorBar } from "@/components/sector-bar";
+import { SectorBar, type Choice } from "@/components/sector-bar";
 import { Toggle } from "@/components/toggle";
-import { useCatalog, useDarkMode, useSector } from "@/hooks/use-food-data";
+import { useCatalog, useDarkMode, useSectors } from "@/hooks/use-food-data";
+import { groupSectors } from "@/lib/groups";
 import {
   asDaysOfIncome,
-  sectorAccent,
+  groupAccent,
   buildScale,
   formatIncome,
   formatPrice,
@@ -54,9 +55,9 @@ function shortMonth(month: string): string {
 export function FoodApp() {
   const { catalog, error: catalogError } = useCatalog();
   const [dark, toggleDark] = useDarkMode();
-  const [sectorId, setSectorId] = useState("olive-oil");
-  const { sector, error: sectorError } = useSector(sectorId);
-  const [wantedProduct, setWantedProduct] = useState<string | null>(null);
+  const [groupId, setGroupId] = useState("olive-oil");
+  // The dropdown's value: which file, and which series in it.
+  const [wantedChoice, setWantedChoice] = useState<string | null>(null);
   const [wantedMonth, setWantedMonth] = useState<string | null>(null);
   // Held as a year rather than an index, for the same reason as the month:
   // switching sector keeps you on the year you were looking at.
@@ -70,13 +71,42 @@ export function FoodApp() {
   // The monthly timeline is there for anyone who unticks it.
   const [yearly, setYearly] = useState(true);
 
-  const summary = catalog?.sectors.find((entry) => entry.id === sectorId);
-  const accent = sectorAccent(sectorId);
-  const products = useMemo(() => sector?.products ?? [], [sector]);
-  // Held rather than set, so a product that exists in the next sector too
+  // The buttons in the top bar. Meat is three sectors under one of them; the
+  // rest are one apiece, and nothing below cares which is which.
+  const groups = useMemo(
+    () => (catalog ? groupSectors(catalog.sectors) : []),
+    [catalog],
+  );
+  const group = groups.find((entry) => entry.id === groupId) ?? null;
+  const groupSectorIds = useMemo(
+    () => group?.sectors.map((entry) => entry.id) ?? [],
+    [group],
+  );
+  const { sectors, error: sectorError } = useSectors(groupSectorIds);
+  const accent = groupAccent(groupId);
+
+  /** Every series the button offers, across however many files it spans. */
+  const choices: Choice[] = useMemo(
+    () =>
+      (group?.sectors ?? []).flatMap((entry) =>
+        (sectors[entry.id]?.products ?? []).map((product) => ({
+          key: `${entry.id}:${product.id}`,
+          sectorId: entry.id,
+          product,
+        })),
+      ),
+    [group, sectors],
+  );
+  // Held rather than set, so a product that exists under the next button too
   // survives the switch and one that does not falls back to its first.
-  const product =
-    products.find((entry) => entry.id === wantedProduct) ?? products[0] ?? null;
+  const choice =
+    choices.find((entry) => entry.key === wantedChoice) ??
+    choices.find((entry) => entry.product.id === wantedChoice?.split(":")[1]) ??
+    choices[0] ??
+    null;
+  const sector = choice ? (sectors[choice.sectorId] ?? null) : null;
+  const summary = group?.sectors.find((entry) => entry.id === choice?.sectorId);
+  const product = choice?.product ?? null;
   const productId = product?.id ?? "";
   const organicAvailable = product?.organic === true;
   const showOrganic = organic && organicAvailable;
@@ -326,9 +356,9 @@ export function FoodApp() {
     setYearly(value);
   };
 
-  const changeSector = (id: string) => {
+  const changeGroup = (id: string) => {
     setPlaying(false);
-    setSectorId(id);
+    setGroupId(id);
   };
 
   const missing = countryCodes.some((code) => values[code] === null);
@@ -384,10 +414,10 @@ export function FoodApp() {
     <main className="relative h-dvh overflow-hidden">
       <PriceMap
         dark={dark}
+        groupId={groupId}
         label={label}
         onSelect={setSelected}
         scale={scale}
-        sectorId={sectorId}
         selected={selected}
         values={values}
       />
@@ -395,17 +425,17 @@ export function FoodApp() {
       {catalog && (
         <SectorBar
           accent={accent}
+          choiceKey={choice?.key ?? ""}
+          choices={choices}
+          groupId={groupId}
+          groups={groups}
           normalised={normalised}
+          onChoice={(key) => setWantedChoice(key)}
+          onGroup={changeGroup}
           onNormalised={setNormalised}
           onOrganic={setOrganic}
-          onProduct={(id) => setWantedProduct(id)}
-          onSector={changeSector}
           organic={showOrganic}
           organicAvailable={organicAvailable}
-          productId={productId}
-          products={products}
-          sectorId={sectorId}
-          sectors={catalog.sectors}
         />
       )}
 
@@ -443,8 +473,8 @@ export function FoodApp() {
             : `per ${summary?.unit ?? ""}`
         }
         format={format}
+        groupId={groupId}
         scale={scale}
-        sectorId={sectorId}
         showMissing={missing}
       />
 
@@ -524,10 +554,10 @@ export function FoodApp() {
       <div className="pointer-events-none absolute right-2 bottom-20 z-[501] flex flex-col items-end gap-2 sm:bottom-24">
         {selected && catalog && summary && (
           <CountryPanel
-            // The product is named only when the sector offers a choice;
-            // "per kg, Pork" under the Pork button says nothing twice.
+            // The product is named only when the button offers a choice;
+            // "per kg, Milk" under the Milk button says nothing twice.
             caption={`${normalised ? "of a median income, " : ""}per ${summary.unit}${
-              product && products.length > 1 ? `, ${product.label.toLowerCase()}` : ""
+              product && choices.length > 1 ? `, ${product.label.toLowerCase()}` : ""
             }`}
             detail={product?.detail}
             headline={selectedValue === null ? null : format(selectedValue)}
@@ -549,7 +579,7 @@ export function FoodApp() {
           <span>
             {catalogError
               ? "The price data did not load."
-              : `The ${summary?.label.toLowerCase() ?? "sector"} prices did not load.`}
+              : `The ${group?.label.toLowerCase() ?? "sector"} prices did not load.`}
           </span>
           <button
             className="border-0 bg-transparent p-0 font-bold text-red-900 underline"

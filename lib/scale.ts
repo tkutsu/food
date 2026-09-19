@@ -1,6 +1,8 @@
 /**
- * Colouring the map. One hue per sector, light to dark, because the thing
- * being shown is a magnitude: a price.
+ * Colouring the map. One hue per button in the top bar, light to dark,
+ * because the thing being shown is a magnitude: a price. Keyed by the button
+ * rather than the sector, which is the same thing everywhere except meat,
+ * where beef, pork and lamb share one.
  *
  * Every ramp is the same object as the validated sequential blue, moved to a
  * different hue: the same lightness band (0.905 down to 0.338 in OKLCH, even
@@ -38,18 +40,18 @@ export const BIN_COUNT = RAMPS.milk.length;
 /** Countries that reported nothing this month, told apart from any price. */
 export const NO_DATA_FILL = "#898781";
 
-export function ramp(sectorId: string): readonly string[] {
-  return RAMPS[sectorId] ?? RAMPS.milk;
+export function ramp(groupId: string): readonly string[] {
+  return RAMPS[groupId] ?? RAMPS.milk;
 }
 
 /**
- * The sector's colour for the furniture that is not the map: the active
+ * The button's colour for the furniture that is not the map: the active
  * button, the tickboxes, the slider, and the panel's line. The fifth step of
  * its ramp, which carries the light paper colour as text at 4.5:1 or better
- * for every sector, in either theme.
+ * for every one of them, in either theme.
  */
-export function sectorAccent(sectorId: string): string {
-  return ramp(sectorId)[4];
+export function groupAccent(groupId: string): string {
+  return ramp(groupId)[4];
 }
 
 /** Text that sits on the accent. Fixed, because the accent does not change. */
@@ -109,10 +111,10 @@ export function binOf(value: number, scale: Scale): number {
 export function colorFor(
   value: number | null | undefined,
   scale: Scale | null,
-  sectorId: string,
+  groupId: string,
 ): string {
   if (value === null || value === undefined || !scale) return NO_DATA_FILL;
-  return ramp(sectorId)[binOf(value, scale)];
+  return ramp(groupId)[binOf(value, scale)];
 }
 
 /**

@@ -1,6 +1,8 @@
-// Regenerates the sequential ramps in lib/scale.ts: one per sector, a single
-// hue stepped down in lightness, matching the reference blue ramp's band and
-// step size so all seven read as one family.
+// Regenerates the sequential ramps in lib/scale.ts: one per button in the top
+// bar, a single hue stepped down in lightness, matching the reference blue
+// ramp's band and step size so all seven read as one family. Meat is one
+// button over three sectors, which is why there are seven ramps here and nine
+// files in public/data.
 //
 // Run with: pnpm ramps
 // Then paste the output into LIGHT_RAMPS and re-run the palette validator.

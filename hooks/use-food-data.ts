@@ -50,40 +50,48 @@ export function useCatalog(): { catalog: Catalog | null; error: boolean } {
 }
 
 /**
- * Loads one sector's series. A file per sector keeps the first paint to the
- * one sector on screen rather than every price the Union publishes.
+ * Loads the series behind the button on screen. A file per sector keeps the
+ * first paint to what is showing rather than every price the Union publishes.
+ * Usually that is one file; meat is three under one button, and the dropdown
+ * cannot be drawn until all three have said what they hold.
  */
-export function useSector(sectorId: string): {
-  sector: SectorData | null;
+export function useSectors(sectorIds: readonly string[]): {
+  sectors: Record<string, SectorData>;
   loading: boolean;
   error: boolean;
 } {
-  const [sector, setSector] = useState<SectorData | null>(null);
-  const [failedId, setFailedId] = useState<string | null>(null);
+  // The ids as one string, so the effect does not refire on an array that is
+  // new every render.
+  const key = sectorIds.join(",");
+  const [loaded, setLoaded] = useState<Record<string, SectorData>>({});
+  const [failedKey, setFailedKey] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!key) return;
     let cancelled = false;
-    loadJson<SectorData>(`data/${sectorId}.json`)
-      .then((payload) => {
+    Promise.all(
+      key.split(",").map((id) => loadJson<SectorData>(`data/${id}.json`)),
+    )
+      .then((payloads) => {
         if (cancelled) return;
-        setSector(payload);
-        // Coming back to a sector that failed earlier has to clear it, or the
+        setLoaded(Object.fromEntries(payloads.map((one) => [one.id, one])));
+        // Coming back to a button that failed earlier has to clear it, or the
         // banner outlives the failure it was reporting.
-        setFailedId((failed) => (failed === sectorId ? null : failed));
+        setFailedKey((failed) => (failed === key ? null : failed));
       })
       .catch(() => {
-        if (!cancelled) setFailedId(sectorId);
+        if (!cancelled) setFailedKey(key);
       });
     return () => {
       cancelled = true;
     };
-  }, [sectorId]);
+  }, [key]);
 
-  // Derived rather than cleared on change, so switching sector never paints
+  // Derived rather than cleared on change, so switching button never paints
   // the previous sector's prices under the new one's name.
-  const current = sector?.id === sectorId ? sector : null;
-  const error = failedId === sectorId;
-  return { sector: current, loading: !error && !current, error };
+  const ready = key !== "" && key.split(",").every((id) => loaded[id]);
+  const error = failedKey === key;
+  return { sectors: ready ? loaded : {}, loading: !error && !ready, error };
 }
 
 /**

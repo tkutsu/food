@@ -10,11 +10,14 @@ Live at https://food.themos.dev
 Pick a sector along the top: olive oil, fruit, vegetables, meat, milk, wheat,
 wine. Some carry a choice, so you can colour the map by extra virgin rather than
 virgin, pork rather than beef, or tomatoes rather than vegetables as a whole.
-Each sector is drawn in its own colour.
+Each button is drawn in its own colour.
 
-Meat is one button over three of the Commission's feeds, because cattle, pigs
-and sheep are three endpoints there and one aisle at the butcher. The dropdown
-picks the animal: beef, veal, pork, lamb, young lamb.
+Meat is one button over three of the Commission's sectors, because cattle,
+pigs and sheep are three feeds there and one counter at the butcher. The
+dropdown picks the animal: beef, veal, pork, lamb, young lamb. Nothing is
+merged behind it. Each keeps its own file, its own months and its own prices,
+and the map draws one of them at a time; the button and the colour are all
+they share.
 
 The choices are the things a shopper buys. The Commission also publishes feed
 grain, lamp oil, and eight grades of cattle carcass sorted by the animal's age
@@ -81,5 +84,5 @@ strongest colour is the dearest that month rather than the dearest ever. Prices
 have roughly doubled over the period, which would otherwise paint every recent
 month the same shade. The panel keeps each country's real run.
 
-Light means cheap and dark means dear, in either theme. Each sector has its
+Light means cheap and dark means dear, in either theme. Each button has its
 own colour, so meat is red, wine purple, olive oil olive.

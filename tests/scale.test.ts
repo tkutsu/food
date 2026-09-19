@@ -11,7 +11,7 @@ import {
   incomeFor,
   incomeUnitFor,
   ramp,
-  sectorAccent,
+  groupAccent,
 } from "@/lib/scale";
 
 /** Roughly the shape of one sector, in euro a kilo: a crowd, and outliers. */
@@ -79,7 +79,7 @@ describe("binOf", () => {
 
 describe("ramp", () => {
   it("gives every sector its own hue", () => {
-    const accents = SECTORS.map((id) => sectorAccent(id));
+    const accents = SECTORS.map((id) => groupAccent(id));
     expect(new Set(accents).size).toBe(SECTORS.length);
   });
 
@@ -133,7 +133,7 @@ describe("accent", () => {
     };
     for (const id of SECTORS) {
       const ink = relative(ACCENT_INK);
-      const fill = relative(sectorAccent(id));
+      const fill = relative(groupAccent(id));
       expect((ink + 0.05) / (fill + 0.05)).toBeGreaterThanOrEqual(4.5);
     }
   });

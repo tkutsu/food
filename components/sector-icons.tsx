@@ -27,14 +27,12 @@ const PATHS: Record<string, ReactElement> = {
       <path d="M12 9V5.2M12 8.6 9.3 6M12 8.6 14.7 6" />
     </>
   ),
-  // A cut on the bone rather than the animal, because one button now covers
-  // cattle, pigs and sheep and any one beast would misname the other two.
   meat: (
     <>
-      <path d="M4.6 19.4A8 5.4 -45 0 1 16 8A8 5.4 -45 0 1 4.6 19.4Z" />
-      <path d="M4.9 14.9a5.4 5.4 0 0 0 4.2 4.2" />
-      <path d="M15.9 8.1 17.3 6.7" />
-      <path d="M19.4 8.4a2 2 0 1 1-2.8-2.8 2 2 0 1 1 2.8 2.8Z" />
+      <path d="M6.4 7.4C5 6.6 4.2 5 4.5 3.3c1.7-.2 3.3.5 4.2 1.9" />
+      <path d="M17.6 7.4c1.4-.8 2.2-2.4 1.9-4.1-1.7-.2-3.3.5-4.2 1.9" />
+      <path d="M12 20c-3.7 0-6.4-2.3-6.4-5.3 0-.9.2-1.7.6-2.4-.5-.8-.8-1.8-.8-2.8C5.4 6.6 8.3 4.5 12 4.5s6.6 2.1 6.6 5c0 1-.3 2-.8 2.8.4.7.6 1.5.6 2.4 0 3-2.7 5.3-6.4 5.3Z" />
+      <path d="M10.3 15.6h.01M13.7 15.6h.01" />
     </>
   ),
   milk: (
