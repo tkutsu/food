@@ -34,10 +34,17 @@ January 2024, and fall back to 3.90 to 12.2 by mid 2026. The pattern on the map
 barely moves. The scale underneath it nearly triples and then collapses.
 
 Tick "against income" and the colours stop being euro. Every price is divided by
-what a median household in that country actually earns, and the map reads in
-minutes, hours or days of work per kilo. A kilo of beef in Bulgaria is measured
+the median income of the country it comes from, so the map reads in minutes,
+hours or days of that income per kilo. A kilo of beef in Bulgaria is measured
 against a Bulgarian income rather than a Dutch one, and countries that look cheap
-in euro tend to stop looking cheap.
+in euro tend to stop looking cheap. Beef in 2025 runs from about an hour and a
+half of a median income per kilo in Denmark to five and a half in Romania.
+
+Both sides of that division are in euro at the market rate, which is why there
+is no purchasing power adjustment. A PPP adjusted income would be an income
+already divided by a basket of prices that food is a large part of, and dividing
+a food price by it counts the same thing twice. The ratio as it stands is
+already a real one.
 
 Where a sector reports organic prices too, a second tickbox switches to them and
 the panel tells you what the premium is.
@@ -50,8 +57,18 @@ The European Commission collects what every member state reports for each
 sector, usually one price per market per week. Those are averaged into a single
 figure per country per month.
 
-The incomes are Eurostat's median equivalised net income, one figure per country
-per year.
+The incomes are Eurostat's median equivalised net income (ilc_di03), in euro,
+one figure per country per year. Equivalised means per adult equivalent rather
+than per head or per household: the second adult and the children in a house
+count for less than the first, because two people sharing a kitchen do not need
+two of everything.
+
+A month takes its own year's figure. Eurostat's survey year reports the income
+of the year before it, so the incomes run about a year behind the prices they
+are dividing, which flatters recent years a little while prices are rising. And
+the prices are what the farmer or the slaughterhouse is paid rather than what a
+shop charges, so the days of income are the raw material's and not the shopping
+bill's.
 
 A country that reported nothing is left grey rather than given a colour that
 would mean nothing.

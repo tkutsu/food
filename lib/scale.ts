@@ -129,9 +129,10 @@ export function formatPrice(value: number): string {
 }
 
 /**
- * A price as a share of what a median household has to spend. Eurostat
- * publishes the income a year at a time, so a month takes its own year's
- * figure, or the most recent one published before it.
+ * A price as a share of a median income. Eurostat publishes the income a year
+ * at a time, so a month takes its own year's figure, or the most recent one
+ * published before it. Its survey year reports the year before it, so the
+ * income trails the price it is dividing by roughly a year.
  */
 export function incomeFor(
   byYear: Record<string, number> | undefined,
@@ -146,7 +147,18 @@ export function incomeFor(
   return null;
 }
 
-/** Days of a median income, which is what the normalised map colours by. */
+/**
+ * Days of a median income, which is what the normalised map colours by.
+ * Calendar days of a whole year's income, not working days of a wage.
+ *
+ * Both sides are in euro at the market rate, and they stay that way. Eurostat
+ * also publishes the income in purchasing power standards, and dividing by
+ * that instead multiplies every country's answer by its own price level:
+ * a PPS income is an income already divided by a basket of prices that food
+ * is a large part of, so a food price over it counts the same thing twice and
+ * flattens exactly the gap the map exists to show. Euro over euro is already
+ * a real ratio.
+ */
 export function asDaysOfIncome(price: number, income: number): number {
   return (price / income) * 365;
 }
