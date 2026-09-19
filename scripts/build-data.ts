@@ -79,6 +79,18 @@ interface CuratedProduct {
   detail?: string;
 }
 
+/**
+ * One endpoint a sector reads. Most sectors have exactly one; meat has three,
+ * because the Commission publishes cattle, pigs and sheep under separate
+ * endpoints and a shopper does not think of them as separate aisles.
+ */
+interface Feed {
+  /** Path under the API base, given a member state. */
+  path: (memberState: string) => string;
+  /** Pulls the readings out of one country's response. */
+  read: (rows: Raw[], memberState: string) => Reading[];
+}
+
 interface Sector extends Omit<SectorSummary, "organic"> {
   /**
    * The products to keep, in the order the dropdown shows them, the first
@@ -89,12 +101,12 @@ interface Sector extends Omit<SectorSummary, "organic"> {
   products?: readonly CuratedProduct[];
   /** What a product's number is, for products with no detail of their own. */
   detail?: string;
-  /** Path under the API base, given a member state. */
-  path: (memberState: string) => string;
-  /** Pulls the readings out of one country's response. */
-  read: (rows: Raw[], memberState: string) => Reading[];
+  /** The endpoints to read, in the order their products should appear. */
+  feeds: readonly Feed[];
   /** Recognises this sector's product in an organic row's product name. */
   organicProduct?: (organicName: string, sectorName: string) => string | null;
+  /** The organic group this sector draws from, where it is not its own id. */
+  organicFrom?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -249,8 +261,12 @@ const SECTORS: Sector[] = [
     ],
     detail: "Sold in bulk, at the mill or market",
     note: "Weekly prices at every reporting market, averaged to a national month. Eight countries press enough oil to report.",
-    path: (ms) => `oliveOil/prices?memberStateCodes=${ms}`,
-    read: weekly("product"),
+    feeds: [
+      {
+        path: (ms) => `oliveOil/prices?memberStateCodes=${ms}`,
+        read: weekly("product"),
+      },
+    ],
   },
   {
     id: "fruit",
@@ -258,10 +274,15 @@ const SECTORS: Sector[] = [
     unit: "kg",
     detail: "Wholesale, as it leaves the packing station",
     note: `Weekly ${PRODUCE_STAGE.toLowerCase()}s, the one stage of the supply chain most of the Union reports.`,
-    path: (ms) =>
-      `fruitAndVegetable/pricesSupplyChain?memberStateCodes=${ms}`,
-    read: produce("fruit"),
+    feeds: [
+      {
+        path: (ms) =>
+          `fruitAndVegetable/pricesSupplyChain?memberStateCodes=${ms}`,
+        read: produce("fruit"),
+      },
+    ],
     organicProduct: matchOrganicProduce,
+    organicFrom: "produce",
   },
   {
     id: "vegetables",
@@ -269,19 +290,33 @@ const SECTORS: Sector[] = [
     unit: "kg",
     detail: "Wholesale, as it leaves the packing station",
     note: `Weekly ${PRODUCE_STAGE.toLowerCase()}s, the one stage of the supply chain most of the Union reports.`,
-    path: (ms) =>
-      `fruitAndVegetable/pricesSupplyChain?memberStateCodes=${ms}`,
-    read: produce("vegetable"),
+    feeds: [
+      {
+        path: (ms) =>
+          `fruitAndVegetable/pricesSupplyChain?memberStateCodes=${ms}`,
+        read: produce("vegetable"),
+      },
+    ],
     organicProduct: matchOrganicProduce,
+    organicFrom: "produce",
   },
   {
-    id: "beef",
-    label: "Beef",
+    id: "meat",
+    label: "Meat",
     unit: "kg",
-    // The API splits beef into eight carcass categories by the animal's age
-    // and sex. Nobody buys a young bull or a steer; they buy beef or veal.
-    // Heifers stand for beef: prime meat, reported everywhere, and the one
-    // category with an organic price beside it.
+    // Cattle, pigs and sheep are three endpoints at the Commission and one
+    // aisle at the butcher, so they are one button with the animal in the
+    // dropdown. Beef leads because it is the most widely reported and the
+    // only one with an organic price beside it.
+    //
+    // The API splits cattle into eight carcass categories by the animal's
+    // age and sex. Nobody buys a young bull or a steer; they buy beef or
+    // veal, and heifers stand for beef: prime meat, reported everywhere.
+    // S, E and R are grades on the EU's lean-meat scale for pig carcasses,
+    // and class E is the one the Commission quotes as its reference pig
+    // price. Both lamb carcasses stay, because Greece and much of the
+    // Mediterranean report only the light one and dropping it would take
+    // them off the map.
     products: [
       {
         from: "Heifers",
@@ -293,36 +328,11 @@ const SECTORS: Sector[] = [
         label: "Veal",
         detail: "Calves under eight months, at the slaughterhouse",
       },
-    ],
-    note: "Weekly carcass prices by category, averaged to a national month.",
-    path: (ms) => `beef/prices?memberStateCodes=${ms}`,
-    read: weekly("category"),
-    organicProduct: (organicName) => organicName,
-  },
-  {
-    id: "pigmeat",
-    label: "Pork",
-    unit: "kg",
-    // S, E and R are grades on the EU's lean-meat scale for pig carcasses.
-    // Class E is the one the Commission quotes as its reference pig price.
-    products: [
       {
         from: "E",
         label: "Pork",
         detail: "Class E carcasses, the reference grade, at the slaughterhouse",
       },
-    ],
-    note: "Weekly carcass prices by grade, plus the price of a piglet.",
-    path: (ms) => `pigmeat/prices?memberStateCodes=${ms}`,
-    read: weekly("pigClass"),
-  },
-  {
-    id: "lamb",
-    label: "Lamb",
-    unit: "kg",
-    // Both stay: Greece and much of the Mediterranean report only the light
-    // carcass, so dropping it would take them off the map.
-    products: [
       {
         from: "Heavy Lamb",
         label: "Lamb",
@@ -334,9 +344,22 @@ const SECTORS: Sector[] = [
         detail: "Light carcasses, as sold around the Mediterranean",
       },
     ],
-    note: "Weekly carcass prices, split into light and heavy lambs.",
-    path: (ms) => `sheepAndGoat/prices?memberStateCodes=${ms}`,
-    read: weekly("category"),
+    note: "Weekly carcass prices from the cattle, pig and sheep feeds, averaged to a national month.",
+    feeds: [
+      {
+        path: (ms) => `beef/prices?memberStateCodes=${ms}`,
+        read: weekly("category"),
+      },
+      {
+        path: (ms) => `pigmeat/prices?memberStateCodes=${ms}`,
+        read: weekly("pigClass"),
+      },
+      {
+        path: (ms) => `sheepAndGoat/prices?memberStateCodes=${ms}`,
+        read: weekly("category"),
+      },
+    ],
+    organicProduct: (organicName) => organicName,
   },
   {
     id: "milk",
@@ -353,26 +376,12 @@ const SECTORS: Sector[] = [
       },
     ],
     note: "The monthly price a dairy pays a farmer for raw milk, before it becomes anything else.",
-    path: (ms) => `rawMilk/prices?memberStateCodes=${ms}`,
-    read: (rows, memberState) => {
-      const readings: Reading[] = [];
-      for (const row of rows) {
-        const year = Number(row.year);
-        const monthNumber = Number(row.month);
-        const price = parsePrice(row.price as string);
-        if (!year || !monthNumber || price === null) continue;
-        const month = monthKey(year, monthNumber);
-        if (month < FIRST_MONTH) continue;
-        readings.push({
-          country: memberState,
-          month,
-          product: String(row.product ?? "Raw milk"),
-          price,
-          unit: String(row.unit ?? ""),
-        });
-      }
-      return readings;
-    },
+    feeds: [
+      {
+        path: (ms) => `rawMilk/prices?memberStateCodes=${ms}`,
+        read: readRawMilk,
+      },
+    ],
     organicProduct: () => "Raw milk",
   },
   {
@@ -395,8 +404,12 @@ const SECTORS: Sector[] = [
       },
     ],
     note: "Weekly prices at the named markets of each country, across every stage from the farm gate to the port, averaged to a national month.",
-    path: (ms) => `cereal/prices?memberStateCodes=${ms}`,
-    read: weekly("productName"),
+    feeds: [
+      {
+        path: (ms) => `cereal/prices?memberStateCodes=${ms}`,
+        read: weekly("productName"),
+      },
+    ],
     organicProduct: matchOrganicCereal,
   },
   {
@@ -411,26 +424,54 @@ const SECTORS: Sector[] = [
     ],
     detail: "In bulk, every quality tier together",
     note: "Only Germany, Spain, France and Italy report wine, each in its own words, so the prices are gathered by colour.",
-    path: (ms) => `wine/prices?memberStateCodes=${ms}`,
-    read: (rows, memberState) => {
-      const readings: Reading[] = [];
-      for (const row of rows) {
-        const month = monthOfDate(row.beginDate as string);
-        const colour = wineColour(String(row.description ?? ""));
-        const raw = parsePrice(row.price as string);
-        if (!month || month < FIRST_MONTH || !colour || raw === null) continue;
-        readings.push({
-          country: memberState,
-          month,
-          product: colour === "red" ? "Red and rosé" : "White",
-          price: raw,
-          unit: String(row.unit ?? ""),
-        });
-      }
-      return readings;
-    },
+    feeds: [
+      {
+        path: (ms) => `wine/prices?memberStateCodes=${ms}`,
+        read: readWine,
+      },
+    ],
   },
 ];
+
+/** Raw milk is reported monthly already, with the year and month as fields. */
+function readRawMilk(rows: Raw[], memberState: string): Reading[] {
+  const readings: Reading[] = [];
+  for (const row of rows) {
+    const year = Number(row.year);
+    const monthNumber = Number(row.month);
+    const price = parsePrice(row.price as string);
+    if (!year || !monthNumber || price === null) continue;
+    const month = monthKey(year, monthNumber);
+    if (month < FIRST_MONTH) continue;
+    readings.push({
+      country: memberState,
+      month,
+      product: String(row.product ?? "Raw milk"),
+      price,
+      unit: String(row.unit ?? ""),
+    });
+  }
+  return readings;
+}
+
+/** Each wine country names its wines its own way, so they gather by colour. */
+function readWine(rows: Raw[], memberState: string): Reading[] {
+  const readings: Reading[] = [];
+  for (const row of rows) {
+    const month = monthOfDate(row.beginDate as string);
+    const colour = wineColour(String(row.description ?? ""));
+    const raw = parsePrice(row.price as string);
+    if (!month || month < FIRST_MONTH || !colour || raw === null) continue;
+    readings.push({
+      country: memberState,
+      month,
+      product: colour === "red" ? "Red and rosé" : "White",
+      price: raw,
+      unit: String(row.unit ?? ""),
+    });
+  }
+  return readings;
+}
 
 /** Reads the shared fruit-and-vegetable feed as one side of it. */
 function produce(kind: "fruit" | "vegetable") {
@@ -497,7 +538,7 @@ function matchOrganicCereal(
 /** Which organic sector label feeds which of ours. */
 const ORGANIC_SECTORS: Record<string, string> = {
   "Fruit and vegetables": "produce",
-  "Beef and veal": "beef",
+  "Beef and veal": "meat",
   "Milk and milk products": "milk",
   Cereals: "cereal",
 };
@@ -777,19 +818,25 @@ async function main() {
     }
 
     const responses = await pool(MEMBER_STATES, 3, async (memberState) => {
-      try {
-        const rows = (await fetchJson(
-          AGRIFOOD + sector.path(memberState),
-        )) as Raw[];
-        for (const row of rows) {
-          const name = row.memberStateName;
-          if (typeof name === "string" && name) countries[memberState] = name;
+      const readings: Reading[] = [];
+      // One feed failing takes its animal off the map for that country and
+      // leaves the rest of the sector standing, which is what the sector
+      // would have shown before the feeds were gathered under one button.
+      for (const feed of sector.feeds) {
+        try {
+          const rows = (await fetchJson(
+            AGRIFOOD + feed.path(memberState),
+          )) as Raw[];
+          for (const row of rows) {
+            const name = row.memberStateName;
+            if (typeof name === "string" && name) countries[memberState] = name;
+          }
+          readings.push(...feed.read(rows, memberState));
+        } catch (error) {
+          console.warn(`  ${sector.id}/${memberState}: ${String(error)}`);
         }
-        return sector.read(rows, memberState);
-      } catch (error) {
-        console.warn(`  ${sector.id}/${memberState}: ${String(error)}`);
-        return [];
       }
+      return readings;
     });
 
     const bucket: Bucket = new Map();
@@ -803,12 +850,8 @@ async function main() {
     const organicBucket: Bucket = new Map();
     if (sector.organicProduct) {
       for (const row of organicRows) {
-        const feed = ORGANIC_SECTORS[String(row.sector ?? "")];
-        const wanted =
-          sector.id === "fruit" || sector.id === "vegetables"
-            ? "produce"
-            : sector.id;
-        if (feed !== wanted) continue;
+        const group = ORGANIC_SECTORS[String(row.sector ?? "")];
+        if (group !== (sector.organicFrom ?? sector.id)) continue;
         const price = parsePrice(row.organicPrice as number);
         const year = Number(row.year);
         const monthNumber = Number(row.monthNumber);

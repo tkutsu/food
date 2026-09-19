@@ -10,7 +10,7 @@
  * magenta can carry far more chroma than blue, and a share of maximum would
  * make one ramp shout while another whispered.
  *
- * All nine pass the sequential gates: monotone lightness, adjacent lightness
+ * All seven pass the sequential gates: monotone lightness, adjacent lightness
  * gaps of at least 0.06, hue spread under three degrees. Regenerate with
  * `pnpm ramps`.
  *
@@ -27,9 +27,7 @@ const RAMPS: Record<string, readonly string[]> = {
   "olive-oil": ["#d8e5c9", "#b2cb94", "#8eb15e", "#6c971f", "#557816", "#3f5b0e", "#2b3f06"],
   fruit: ["#f9d7cc", "#eeb09b", "#e28969", "#d45d31", "#af4419", "#87310d", "#602005"],
   vegetables: ["#cbe8d4", "#98d1ab", "#60b983", "#249f5f", "#1a7f4b", "#116037", "#084325"],
-  beef: ["#fad5d7", "#f0adb1", "#e3838b", "#d55667", "#b03d4e", "#882a39", "#621a26"],
-  pigmeat: ["#f6d5e3", "#e9adc8", "#da84ae", "#cb5794", "#a73f77", "#812c5a", "#5c1b3f"],
-  lamb: ["#f4dac5", "#e7b68c", "#d89250", "#be721e", "#985a16", "#74430d", "#522d06"],
+  meat: ["#fad5d7", "#f0adb1", "#e3838b", "#d55667", "#b03d4e", "#882a39", "#621a26"],
   milk: ["#cce2fb", "#9ac6f3", "#67a8ea", "#238ae3", "#186eb6", "#0f528c", "#073963"],
   cereal: ["#e9dfc2", "#d3c086", "#bea142", "#a0841f", "#806816", "#614f0e", "#433606"],
   wine: ["#ecd7f1", "#d8b1e1", "#c48ad1", "#b062c2", "#9049a0", "#6e347b", "#4e2258"],

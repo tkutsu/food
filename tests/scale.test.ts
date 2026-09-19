@@ -26,8 +26,7 @@ function luminance(hex: string): number {
 }
 
 const SECTORS = [
-  "olive-oil", "fruit", "vegetables", "beef", "pigmeat",
-  "lamb", "milk", "cereal", "wine",
+  "olive-oil", "fruit", "vegetables", "meat", "milk", "cereal", "wine",
 ];
 
 describe("buildScale", () => {
@@ -108,17 +107,17 @@ describe("ramp", () => {
 describe("colorFor", () => {
   it("gives the cheapest country the palest step", () => {
     const scale = buildScale(OLIVE_OIL)!;
-    expect(colorFor(scale.min, scale, "beef")).toBe(ramp("beef")[0]);
-    expect(colorFor(scale.max, scale, "beef")).toBe(
-      ramp("beef")[scale.breaks.length],
+    expect(colorFor(scale.min, scale, "meat")).toBe(ramp("meat")[0]);
+    expect(colorFor(scale.max, scale, "meat")).toBe(
+      ramp("meat")[scale.breaks.length],
     );
   });
 
   it("marks a country with nothing reported apart from every price", () => {
     const scale = buildScale(OLIVE_OIL)!;
-    const missing = colorFor(null, scale, "beef");
+    const missing = colorFor(null, scale, "meat");
     for (const id of SECTORS) expect(ramp(id)).not.toContain(missing);
-    expect(colorFor(undefined, scale, "beef")).toBe(missing);
+    expect(colorFor(undefined, scale, "meat")).toBe(missing);
   });
 });
 

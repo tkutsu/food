@@ -1,6 +1,6 @@
 // Regenerates the sequential ramps in lib/scale.ts: one per sector, a single
 // hue stepped down in lightness, matching the reference blue ramp's band and
-// step size so all nine read as one family.
+// step size so all seven read as one family.
 //
 // Run with: pnpm ramps
 // Then paste the output into LIGHT_RAMPS and re-run the palette validator.
@@ -63,8 +63,8 @@ function buildRamp(hue, band) {
 }
 
 const SECTORS = {
-  beef: 15, fruit: 40, lamb: 62, cereal: 92, "olive-oil": 128,
-  vegetables: 155, milk: 250, wine: 320, pigmeat: 350,
+  meat: 15, fruit: 40, cereal: 92, "olive-oil": 128, vegetables: 155,
+  milk: 250, wine: 320,
 };
 // One set, used in both themes: pale for the cheapest, dark for the dearest.
 for (const [id, hue] of Object.entries(SECTORS)) {

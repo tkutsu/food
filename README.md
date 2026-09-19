@@ -7,14 +7,18 @@ Live at https://food.themos.dev
 
 ## What you can do with it
 
-Pick a sector along the top: olive oil, fruit, vegetables, beef, pork, lamb,
-milk, wheat, wine. Some carry a choice, so you can colour the map by extra virgin
-rather than virgin, veal rather than beef, or tomatoes rather than vegetables as
-a whole, and each is drawn in its own colour.
+Pick a sector along the top: olive oil, fruit, vegetables, meat, milk, wheat,
+wine. Some carry a choice, so you can colour the map by extra virgin rather than
+virgin, pork rather than beef, or tomatoes rather than vegetables as a whole.
+Each sector is drawn in its own colour.
+
+Meat is one button over three of the Commission's feeds, because cattle, pigs
+and sheep are three endpoints there and one aisle at the butcher. The dropdown
+picks the animal: beef, veal, pork, lamb, young lamb.
 
 The choices are the things a shopper buys. The Commission also publishes feed
-grain, lamp oil, and eight grades of beef carcass sorted by the animal's age and
-sex. Those are left out.
+grain, lamp oil, and eight grades of cattle carcass sorted by the animal's age
+and sex. Those are left out.
 
 The map opens on each country's average price so far this year, which is the
 steadiest thing to compare: less seasonal swing, and no country missing because
@@ -61,4 +65,4 @@ have roughly doubled over the period, which would otherwise paint every recent
 month the same shade. The panel keeps each country's real run.
 
 Light means cheap and dark means dear, in either theme. Each sector has its
-own colour, so beef is red, wine purple, olive oil olive.
+own colour, so meat is red, wine purple, olive oil olive.
