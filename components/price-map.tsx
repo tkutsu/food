@@ -77,8 +77,11 @@ export function PriceMap({
       map.fitBounds(EUROPE);
 
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        // The basemap's licence, and nothing else. Where the prices and the
+        // incomes come from is the panel's job and the readme's; repeating it
+        // in the corner of the map only crowded the coastline.
         attribution:
-          'Prices: <a href="https://agridata.ec.europa.eu/">European Commission</a> · Income: Eurostat · Map: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
         maxZoom: 8,
       }).addTo(map);
 
