@@ -1,7 +1,7 @@
 # Food prices
 
-A map of what Europe pays for its food, sector by sector, month by month, back
-to 2005.
+A map of what Europe's farmers, mills and slaughterhouses are paid for food,
+sector by sector, month by month, back to 2005.
 
 Live at https://food.themos.dev
 
@@ -60,6 +60,25 @@ The European Commission collects what every member state reports for each
 sector, usually one price per market per week. Those are averaged into a single
 figure per country per month.
 
+Every price here is a supplier price. It is what the farmer, the mill, the
+packing station, the dairy or the slaughterhouse is paid, not what a shop
+charges you. Raw milk is what a dairy pays a farmer. Beef, veal, pork and lamb
+are carcasses at the slaughterhouse. Olive oil and wine are bulk, before
+anyone bottles them. Wheat is grain on its way to a mill. Fruit and vegetables
+are priced as they leave the packing station. So the numbers are well below a
+shelf price, and the distance between the two is not a fixed multiple: it
+covers processing, transport, packaging, the shop's margin and VAT, and those
+differ by country and by product.
+
+The Commission's fruit and vegetable feed does carry the whole chain, four
+stages from the farm gate to the retail selling price, and only the
+ex-packaging station stage is used here. Retail is too thin to draw a map
+with. In 2025 five member states filed a retail selling price against nine
+filing ex-packaging, and averaging a shop price in Greece against a packing
+station price in Germany would mean nothing. No other sector publishes a
+retail stage. Cereals carry a stage of their own, but its five values run from
+the silo to the port to the processor, every one of them upstream of a bakery.
+
 The incomes are Eurostat's median equivalised net income (ilc_di03), in euro,
 one figure per country per year. Equivalised means per adult equivalent rather
 than per head or per household: the second adult and the children in a house
@@ -69,9 +88,8 @@ two of everything.
 A month takes its own year's figure. Eurostat's survey year reports the income
 of the year before it, so the incomes run about a year behind the prices they
 are dividing, which flatters recent years a little while prices are rising. And
-the prices are what the farmer or the slaughterhouse is paid rather than what a
-shop charges, so the days of income are the raw material's and not the shopping
-bill's.
+since the prices are supplier prices, the days of income are the raw
+material's and not the shopping bill's.
 
 A country that reported nothing is left grey rather than given a colour that
 would mean nothing.
